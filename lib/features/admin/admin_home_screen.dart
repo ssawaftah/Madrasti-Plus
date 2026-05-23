@@ -54,9 +54,18 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     ).showSnackBar(const SnackBar(content: Text('تمت إضافة الطالب بنجاح')));
   }
 
+  String _formatTime(DateTime dateTime) {
+    final hour = dateTime.hour.toString().padLeft(2, '0');
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
   @override
   Widget build(BuildContext context) {
     final students = MockDatabase.students;
+    final records = MockDatabase.attendanceRecords;
+    final insideCount = students.where((student) => student.isInsideSchool).length;
+    final outsideCount = students.length - insideCount;
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -65,6 +74,49 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         body: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            const Text(
+              'لوحة الإدارة',
+              style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'نظرة سريعة على الطلاب وحالة الحضور التجريبية.',
+              style: TextStyle(fontSize: 15),
+            ),
+            const SizedBox(height: 16),
+
+            Row(
+              children: [
+                Expanded(
+                  child: _StatCard(
+                    title: 'الطلاب',
+                    value: students.length.toString(),
+                    icon: Icons.groups,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _StatCard(
+                    title: 'داخل المدرسة',
+                    value: insideCount.toString(),
+                    icon: Icons.check_circle,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _StatCard(
+                    title: 'خارج المدرسة',
+                    value: outsideCount.toString(),
+                    icon: Icons.cancel,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 28),
+            const Divider(),
+            const SizedBox(height: 16),
+
             const Text(
               'إضافة طالب',
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
@@ -118,21 +170,91 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               const Text('لا يوجد طلاب بعد. أضف أول طالب وخلينا نولّعها.')
             else
               ...students.map(
-                (student) => Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.person),
-                    title: Text(student.fullName),
-                    subtitle: Text(
-                      'الصف: ${student.grade} - الشعبة: ${student.section}',
+                (student) {
+                  final statusText = student.isInsideSchool
+                      ? 'داخل المدرسة'
+                      : 'خارج المدرسة';
+                  final lastScanText = student.lastAttendanceAt == null
+                      ? 'لا يوجد تسجيل بعد'
+                      : 'آخر تسجيل: ${_formatTime(student.lastAttendanceAt!)}';
+
+                  return Card(
+                    child: ListTile(
+                      leading: Icon(
+                        student.isInsideSchool
+                            ? Icons.check_circle
+                            : Icons.cancel,
+                      ),
+                      title: Text(student.fullName),
+                      subtitle: Text(
+                        'الصف: ${student.grade} - الشعبة: ${student.section}\nالحالة: $statusText\n$lastScanText',
+                      ),
+                      isThreeLine: true,
                     ),
-                    trailing: Icon(
-                      student.isInsideSchool
-                          ? Icons.check_circle
-                          : Icons.cancel,
-                    ),
-                  ),
-                ),
+                  );
+                },
               ),
+
+            const SizedBox(height: 28),
+            const Divider(),
+            const SizedBox(height: 16),
+
+            const Text(
+              'سجل الحضور العام',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+
+            if (records.isEmpty)
+              const Text('لا يوجد عمليات حضور بعد.')
+            else
+              ...records.map(
+                (record) {
+                  final typeText = record.isCheckIn ? 'دخول' : 'خروج';
+
+                  return Card(
+                    child: ListTile(
+                      leading: Icon(record.isCheckIn ? Icons.login : Icons.logout),
+                      title: Text('${record.studentName} - $typeText'),
+                      subtitle: Text('الوقت: ${_formatTime(record.timestamp)}'),
+                    ),
+                  );
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final IconData icon;
+
+  const _StatCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon),
+            const SizedBox(height: 12),
+            Text(
+              value,
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            Text(title),
           ],
         ),
       ),
