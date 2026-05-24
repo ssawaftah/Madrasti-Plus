@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../config/firebase_config.dart';
 import '../models/app_notification.dart';
@@ -18,6 +19,19 @@ class NotificationService {
 
   final FirebaseFirestore _firestore;
 
+  static final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
+  static bool _localNotificationsInitialized = false;
+  static bool _foregroundListenerInitialized = false;
+
+  static const AndroidNotificationChannel _androidChannel =
+      AndroidNotificationChannel(
+    'madrasti_plus_alerts',
+    'Madrasti Plus Alerts',
+    description: 'تنبيهات Madrasti Plus أثناء استخدام التطبيق',
+    importance: Importance.high,
+  );
+
   CollectionReference<Map<String, dynamic>> get _usersCollection {
     return _firestore.collection('users');
   }
@@ -28,8 +42,17 @@ class NotificationService {
 
   Future<void> initializeForCurrentUser(String userId) async {
     try {
+      await _initializeLocalNotifications();
+      _initializeForegroundMessageListener();
+
       final messaging = FirebaseMessaging.instance;
       await messaging.requestPermission(alert: true, badge: true, sound: true);
+      await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+
       final token = await messaging.getToken();
 
       if (token == null || token.isEmpty) return;
@@ -45,6 +68,58 @@ class NotificationService {
       debugPrint('Failed to initialize notifications: $error');
       debugPrintStack(stackTrace: stackTrace);
     }
+  }
+
+  Future<void> _initializeLocalNotifications() async {
+    if (_localNotificationsInitialized) return;
+
+    const androidInitializationSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const initializationSettings = InitializationSettings(
+      android: androidInitializationSettings,
+    );
+
+    await _localNotifications.initialize(initializationSettings);
+
+    final androidPlugin = _localNotifications
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+
+    await androidPlugin?.createNotificationChannel(_androidChannel);
+    await androidPlugin?.requestNotificationsPermission();
+
+    _localNotificationsInitialized = true;
+  }
+
+  void _initializeForegroundMessageListener() {
+    if (_foregroundListenerInitialized) return;
+    _foregroundListenerInitialized = true;
+
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+      final notification = message.notification;
+      final androidNotification = notification?.android;
+
+      final title = notification?.title ?? message.data['title']?.toString();
+      final body = notification?.body ?? message.data['body']?.toString();
+
+      if (title == null && body == null) return;
+
+      await _localNotifications.show(
+        notification.hashCode,
+        title ?? 'Madrasti Plus',
+        body ?? '',
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            _androidChannel.id,
+            _androidChannel.name,
+            channelDescription: _androidChannel.description,
+            importance: Importance.high,
+            priority: Priority.high,
+            icon: androidNotification?.smallIcon,
+          ),
+        ),
+      );
+    });
   }
 
   Stream<List<AppNotification>> watchUserNotifications(String userId) {
