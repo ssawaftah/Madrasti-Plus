@@ -48,4 +48,18 @@ class UserManagementService {
       SetOptions(merge: true),
     );
   }
+
+  Future<void> updateTeacherAssignments({
+    required String userId,
+    required List<String> assignedGrades,
+    required List<String> assignedSections,
+  }) {
+    return _usersCollection.doc(userId).set(
+      {
+        'assignedGrades': assignedGrades,
+        'assignedSections': assignedSections,
+      },
+      SetOptions(merge: true),
+    );
+  }
 }
