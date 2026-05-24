@@ -7,7 +7,7 @@ class FirebaseConfig {
 
   static String get defaultSchoolId => SchoolSessionService.activeSchoolId;
 
-  static const String fallbackSchoolId = 'school_001';
+  static const String fallbackSchoolId = SchoolSessionService.fallbackSchoolId;
 
   // Cloud Firestore database ID from Firebase Console URL:
   // /firestore/databases/default/data
