@@ -115,7 +115,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           ),
         );
       },
-    ).whenComplete(controller.dispose);
+    );
   }
 
   String _formatTime(DateTime dateTime) {
