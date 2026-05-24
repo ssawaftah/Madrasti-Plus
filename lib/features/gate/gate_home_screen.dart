@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/models/attendance_record.dart';
+
 import '../../core/data/mock_database.dart';
 
 class GateHomeScreen extends StatefulWidget {
@@ -11,41 +11,25 @@ class GateHomeScreen extends StatefulWidget {
 
 class _GateHomeScreenState extends State<GateHomeScreen> {
   void _simulateScan(String studentId) {
-    final index = MockDatabase.students.indexWhere(
-      (student) => student.id == studentId,
-    );
+    final record = MockDatabase.toggleStudentAttendance(studentId);
 
-    if (index == -1) return;
+    if (record == null) return;
 
-    final student = MockDatabase.students[index];
-    final newStatus = !student.isInsideSchool;
-    final now = DateTime.now();
-    final attendanceType = newStatus ? 'check_in' : 'check_out';
+    setState(() {});
 
-    setState(() {
-      MockDatabase.students[index] = student.copyWith(
-        isInsideSchool: newStatus,
-        lastAttendanceAt: now,
-      );
-
-      MockDatabase.attendanceRecords.insert(
-        0,
-        AttendanceRecord(
-          id: now.microsecondsSinceEpoch.toString(),
-          studentId: student.id,
-          studentName: student.fullName,
-          type: attendanceType,
-          timestamp: now,
-        ),
-      );
-    });
-    final message = newStatus
-        ? 'تم تسجيل دخول ${student.fullName}'
-        : 'تم تسجيل خروج ${student.fullName}';
+    final message = record.isCheckIn
+        ? 'تم تسجيل دخول ${record.studentName}'
+        : 'تم تسجيل خروج ${record.studentName}';
 
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  String _formatTime(DateTime dateTime) {
+    final hour = dateTime.hour.toString().padLeft(2, '0');
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
   }
 
   @override
@@ -85,7 +69,7 @@ class _GateHomeScreenState extends State<GateHomeScreen> {
 
                     final lastScanText = student.lastAttendanceAt == null
                         ? 'لا يوجد تسجيل بعد'
-                        : 'آخر تسجيل: ${student.lastAttendanceAt!.hour.toString().padLeft(2, '0')}:${student.lastAttendanceAt!.minute.toString().padLeft(2, '0')}';
+                        : 'آخر تسجيل: ${_formatTime(student.lastAttendanceAt!)}';
 
                     return Card(
                       child: ListTile(
