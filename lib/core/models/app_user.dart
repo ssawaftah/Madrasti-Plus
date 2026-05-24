@@ -29,15 +29,9 @@ class AppUser {
       role: json['role'] as String? ?? 'parent',
       schoolId: json['schoolId'] as String? ?? 'school_001',
       schoolCode: json['schoolCode'] as String? ?? '',
-      linkedStudentIds: (json['linkedStudentIds'] as List<dynamic>? ?? [])
-          .map((item) => item.toString())
-          .toList(),
-      assignedGrades: (json['assignedGrades'] as List<dynamic>? ?? [])
-          .map((item) => item.toString())
-          .toList(),
-      assignedSections: (json['assignedSections'] as List<dynamic>? ?? [])
-          .map((item) => item.toString())
-          .toList(),
+      linkedStudentIds: _stringListFromJson(json['linkedStudentIds']),
+      assignedGrades: _stringListFromJson(json['assignedGrades']),
+      assignedSections: _stringListFromJson(json['assignedSections']),
     );
   }
 
@@ -52,5 +46,29 @@ class AppUser {
       'assignedGrades': assignedGrades,
       'assignedSections': assignedSections,
     };
+  }
+
+  static List<String> _stringListFromJson(dynamic value) {
+    if (value == null) return const [];
+
+    if (value is List) {
+      return value
+          .map((item) => item.toString().trim())
+          .where((item) => item.isNotEmpty)
+          .toList();
+    }
+
+    if (value is String) {
+      final normalized = value.trim();
+      if (normalized.isEmpty) return const [];
+
+      return normalized
+          .split(',')
+          .map((item) => item.trim())
+          .where((item) => item.isNotEmpty)
+          .toList();
+    }
+
+    return [value.toString().trim()].where((item) => item.isNotEmpty).toList();
   }
 }
