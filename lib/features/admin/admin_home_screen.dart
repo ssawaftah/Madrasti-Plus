@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:nfc_manager/nfc_manager.dart';
 
 import '../../core/data/mock_database.dart';
+import '../../core/services/nfc_uid_reader.dart';
 
 class AdminHomeScreen extends StatefulWidget {
   const AdminHomeScreen({super.key});
@@ -13,9 +15,11 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   final _nameController = TextEditingController();
   final _gradeController = TextEditingController();
   final _sectionController = TextEditingController();
+  bool _isNfcSessionActive = false;
 
   @override
   void dispose() {
+    _stopNfcSession();
     _nameController.dispose();
     _gradeController.dispose();
     _sectionController.dispose();
@@ -56,66 +60,192 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     showDialog<void>(
       context: context,
       builder: (dialogContext) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: AlertDialog(
-            title: Text('ربط بطاقة NFC - $studentName'),
-            content: TextField(
-              controller: controller,
-              autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'NFC UID',
-                hintText: 'مثال: 04A1B2C3D4',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('إلغاء'),
-              ),
-              FilledButton(
-                onPressed: () {
-                  final uid = controller.text.trim();
-
-                  if (uid.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('أدخل UID أولًا')),
-                    );
-                    return;
-                  }
-
-                  if (MockDatabase.isNfcUidAlreadyLinked(
-                    uid,
-                    exceptStudentId: studentId,
-                  )) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('هذا UID مربوط بطالب آخر بالفعل'),
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Directionality(
+              textDirection: TextDirection.rtl,
+              child: AlertDialog(
+                title: Text('ربط بطاقة NFC - $studentName'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextField(
+                      controller: controller,
+                      autofocus: true,
+                      decoration: const InputDecoration(
+                        labelText: 'NFC UID',
+                        hintText: 'مثال: 04A1B2C3D4',
+                        border: OutlineInputBorder(),
                       ),
-                    );
-                    return;
-                  }
-
-                  setState(() {
-                    MockDatabase.linkNfcUidToStudent(
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: _isNfcSessionActive
+                          ? null
+                          : () => _scanNfcForStudentLink(
+                                studentId: studentId,
+                                controller: controller,
+                                setDialogState: setDialogState,
+                              ),
+                      icon: const Icon(Icons.sensors),
+                      label: Text(
+                        _isNfcSessionActive
+                            ? 'بانتظار البطاقة...'
+                            : 'قراءة البطاقة الآن',
+                      ),
+                    ),
+                    if (_isNfcSessionActive) ...[
+                      const SizedBox(height: 8),
+                      TextButton.icon(
+                        onPressed: () async {
+                          await _stopNfcSession();
+                          setDialogState(() {});
+                        },
+                        icon: const Icon(Icons.close),
+                        label: const Text('إلغاء القراءة'),
+                      ),
+                    ],
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () async {
+                      await _stopNfcSession();
+                      if (dialogContext.mounted) {
+                        Navigator.of(dialogContext).pop();
+                      }
+                    },
+                    child: const Text('إلغاء'),
+                  ),
+                  FilledButton(
+                    onPressed: () => _linkNfcUid(
                       studentId: studentId,
-                      nfcUid: uid,
-                    );
-                  });
-
-                  Navigator.of(dialogContext).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('تم ربط بطاقة NFC بنجاح')),
-                  );
-                },
-                child: const Text('حفظ'),
+                      uid: controller.text,
+                      onSuccess: () {
+                        Navigator.of(dialogContext).pop();
+                      },
+                    ),
+                    child: const Text('حفظ'),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
+    ).whenComplete(() {
+      _stopNfcSession();
+      controller.dispose();
+    });
+  }
+
+  Future<void> _scanNfcForStudentLink({
+    required String studentId,
+    required TextEditingController controller,
+    required StateSetter setDialogState,
+  }) async {
+    final isAvailable = await NfcManager.instance.isAvailable();
+
+    if (!isAvailable) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('NFC غير متاح أو غير مفعّل على هذا الجهاز')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isNfcSessionActive = true;
+    });
+    setDialogState(() {});
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('قرّب بطاقة NFC من الهاتف الآن')),
     );
+
+    await NfcManager.instance.startSession(
+      pollingOptions: {
+        NfcPollingOption.iso14443,
+        NfcPollingOption.iso15693,
+        NfcPollingOption.iso18092,
+      },
+      onDiscovered: (NfcTag tag) async {
+        final uid = NfcUidReader.extractUid(tag);
+
+        await _stopNfcSession();
+
+        if (!mounted) return;
+        setDialogState(() {});
+
+        if (uid == null || uid.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('تمت قراءة البطاقة لكن لم أستطع استخراج UID')),
+          );
+          return;
+        }
+
+        controller.text = uid;
+        _linkNfcUid(studentId: studentId, uid: uid);
+      },
+    );
+  }
+
+  Future<void> _stopNfcSession() async {
+    if (!_isNfcSessionActive) return;
+
+    try {
+      await NfcManager.instance.stopSession();
+    } catch (_) {
+      // Ignore stop errors during hot reload/navigation.
+    }
+
+    if (mounted) {
+      setState(() {
+        _isNfcSessionActive = false;
+      });
+    } else {
+      _isNfcSessionActive = false;
+    }
+  }
+
+  void _linkNfcUid({
+    required String studentId,
+    required String uid,
+    VoidCallback? onSuccess,
+  }) {
+    final normalizedUid = uid.trim();
+
+    if (normalizedUid.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('أدخل UID أولًا')),
+      );
+      return;
+    }
+
+    if (MockDatabase.isNfcUidAlreadyLinked(
+      normalizedUid,
+      exceptStudentId: studentId,
+    )) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('هذا UID مربوط بطالب آخر بالفعل')),
+      );
+      return;
+    }
+
+    setState(() {
+      MockDatabase.linkNfcUidToStudent(
+        studentId: studentId,
+        nfcUid: normalizedUid,
+      );
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('تم ربط بطاقة NFC بنجاح')),
+    );
+
+    onSuccess?.call();
   }
 
   String _formatTime(DateTime dateTime) {
