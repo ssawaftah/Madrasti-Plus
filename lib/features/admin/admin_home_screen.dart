@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../core/data/mock_database.dart';
-import '../../core/models/student.dart';
 
 class AdminHomeScreen extends StatefulWidget {
   const AdminHomeScreen({super.key});
@@ -35,15 +34,12 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       return;
     }
 
-    final student = Student(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      fullName: name,
-      grade: grade,
-      section: section,
-    );
-
     setState(() {
-      MockDatabase.students.add(student);
+      MockDatabase.addStudent(
+        fullName: name,
+        grade: grade,
+        section: section,
+      );
       _nameController.clear();
       _gradeController.clear();
       _sectionController.clear();
@@ -64,8 +60,8 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   Widget build(BuildContext context) {
     final students = MockDatabase.students;
     final records = MockDatabase.attendanceRecords;
-    final insideCount = students.where((student) => student.isInsideSchool).length;
-    final outsideCount = students.length - insideCount;
+    final insideCount = MockDatabase.insideSchoolCount;
+    final outsideCount = MockDatabase.outsideSchoolCount;
 
     return Directionality(
       textDirection: TextDirection.rtl,
