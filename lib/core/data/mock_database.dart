@@ -1,10 +1,12 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/attendance_record.dart';
 import '../models/student.dart';
 import '../services/firebase_sync_service.dart';
+import '../services/firestore_database_service.dart';
 
 class MockDatabase {
   MockDatabase._();
@@ -24,17 +26,8 @@ class MockDatabase {
   }
 
   static Future<void> initialize() async {
-    final prefs = await SharedPreferences.getInstance();
-    final studentsJson = prefs.getString(_studentsKey);
-    final attendanceRecordsJson = prefs.getString(_attendanceRecordsKey);
-
-    students
-      ..clear()
-      ..addAll(_decodeStudents(studentsJson));
-
-    attendanceRecords
-      ..clear()
-      ..addAll(_decodeAttendanceRecords(attendanceRecordsJson));
+    await _loadFromLocalStorage();
+    await _loadFromFirestoreIfAvailable();
   }
 
   static Student addStudent({
@@ -163,6 +156,54 @@ class MockDatabase {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_studentsKey);
     await prefs.remove(_attendanceRecordsKey);
+  }
+
+  static Future<void> _loadFromLocalStorage() async {
+    final prefs = await SharedPreferences.getInstance();
+    final studentsJson = prefs.getString(_studentsKey);
+    final attendanceRecordsJson = prefs.getString(_attendanceRecordsKey);
+
+    students
+      ..clear()
+      ..addAll(_decodeStudents(studentsJson));
+
+    attendanceRecords
+      ..clear()
+      ..addAll(_decodeAttendanceRecords(attendanceRecordsJson));
+  }
+
+  static Future<void> _loadFromFirestoreIfAvailable() async {
+    try {
+      final firestoreService = FirestoreDatabaseService();
+      final remoteStudents = await firestoreService.fetchStudents().timeout(
+            const Duration(seconds: 10),
+          );
+      final remoteAttendanceRecords =
+          await firestoreService.fetchAttendanceRecords().timeout(
+                const Duration(seconds: 10),
+              );
+
+      final hasRemoteData =
+          remoteStudents.isNotEmpty || remoteAttendanceRecords.isNotEmpty;
+
+      if (!hasRemoteData) return;
+
+      students
+        ..clear()
+        ..addAll(remoteStudents);
+
+      attendanceRecords
+        ..clear()
+        ..addAll(remoteAttendanceRecords);
+
+      await _save();
+      debugPrint(
+        'Loaded ${students.length} students and ${attendanceRecords.length} attendance records from Firestore.',
+      );
+    } catch (error, stackTrace) {
+      debugPrint('Failed to load data from Firestore, using local data: $error');
+      debugPrintStack(stackTrace: stackTrace);
+    }
   }
 
   static List<Student> _decodeStudents(String? value) {
