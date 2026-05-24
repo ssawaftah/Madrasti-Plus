@@ -17,6 +17,32 @@ class Student {
     this.lastAttendanceAt,
   });
 
+  factory Student.fromJson(Map<String, dynamic> json) {
+    return Student(
+      id: json['id'] as String,
+      fullName: json['fullName'] as String,
+      grade: json['grade'] as String,
+      section: json['section'] as String,
+      nfcUid: json['nfcUid'] as String?,
+      isInsideSchool: json['isInsideSchool'] as bool? ?? false,
+      lastAttendanceAt: json['lastAttendanceAt'] == null
+          ? null
+          : DateTime.parse(json['lastAttendanceAt'] as String),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'fullName': fullName,
+      'grade': grade,
+      'section': section,
+      'nfcUid': nfcUid,
+      'isInsideSchool': isInsideSchool,
+      'lastAttendanceAt': lastAttendanceAt?.toIso8601String(),
+    };
+  }
+
   Student copyWith({
     String? id,
     String? fullName,
