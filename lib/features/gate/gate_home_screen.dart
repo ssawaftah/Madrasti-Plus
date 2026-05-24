@@ -1,4 +1,7 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:nfc_manager/nfc_manager.dart';
 
 import '../../core/data/mock_database.dart';
 
@@ -11,9 +14,11 @@ class GateHomeScreen extends StatefulWidget {
 
 class _GateHomeScreenState extends State<GateHomeScreen> {
   final _nfcUidController = TextEditingController();
+  bool _isNfcSessionActive = false;
 
   @override
   void dispose() {
+    _stopNfcSession();
     _nfcUidController.dispose();
     super.dispose();
   }
@@ -33,17 +38,124 @@ class _GateHomeScreenState extends State<GateHomeScreen> {
       return;
     }
 
-    final record = MockDatabase.toggleStudentAttendanceByNfcUid(uid);
+    _processNfcUid(uid, clearInput: true);
+  }
 
-    if (record == null) {
+  Future<void> _startRealNfcScan() async {
+    final isAvailable = await NfcManager.instance.isAvailable();
+
+    if (!isAvailable) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('لم يتم العثور على طالب مرتبط بهذا UID')),
+        const SnackBar(content: Text('NFC غير متاح أو غير مفعّل على هذا الجهاز')),
       );
       return;
     }
 
-    _nfcUidController.clear();
+    setState(() {
+      _isNfcSessionActive = true;
+    });
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('قرّب بطاقة NFC من الهاتف الآن')),
+    );
+
+    await NfcManager.instance.startSession(
+      onDiscovered: (NfcTag tag) async {
+        final uid = _extractUidFromTag(tag);
+
+        await _stopNfcSession();
+
+        if (!mounted) return;
+
+        if (uid == null || uid.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('تمت قراءة البطاقة لكن لم أستطع استخراج UID')),
+          );
+          return;
+        }
+
+        _nfcUidController.text = uid;
+        _processNfcUid(uid, clearInput: false);
+      },
+    );
+  }
+
+  Future<void> _stopNfcSession() async {
+    if (!_isNfcSessionActive) return;
+
+    try {
+      await NfcManager.instance.stopSession();
+    } catch (_) {
+      // Ignore stop errors during hot reload/navigation.
+    }
+
+    if (mounted) {
+      setState(() {
+        _isNfcSessionActive = false;
+      });
+    } else {
+      _isNfcSessionActive = false;
+    }
+  }
+
+  void _processNfcUid(String uid, {required bool clearInput}) {
+    final record = MockDatabase.toggleStudentAttendanceByNfcUid(uid);
+
+    if (record == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('لم يتم العثور على طالب مرتبط بهذا UID: $uid')),
+      );
+      return;
+    }
+
+    if (clearInput) {
+      _nfcUidController.clear();
+    }
+
     _showScanResult(record);
+  }
+
+  String? _extractUidFromTag(NfcTag tag) {
+    final data = tag.data;
+
+    final candidates = <dynamic>[
+      data['nfca']?['identifier'],
+      data['mifareclassic']?['identifier'],
+      data['mifareultralight']?['identifier'],
+      data['ndef']?['identifier'],
+      data['iso7816']?['identifier'],
+      data['iso15693']?['identifier'],
+    ];
+
+    for (final candidate in candidates) {
+      final uid = _bytesToHex(candidate);
+      if (uid != null && uid.isNotEmpty) return uid;
+    }
+
+    return null;
+  }
+
+  String? _bytesToHex(dynamic value) {
+    if (value == null) return null;
+
+    List<int>? bytes;
+
+    if (value is Uint8List) {
+      bytes = value.toList();
+    } else if (value is List<int>) {
+      bytes = value;
+    } else if (value is List) {
+      bytes = value.whereType<int>().toList();
+    }
+
+    if (bytes == null || bytes.isEmpty) return null;
+
+    return bytes
+        .map((byte) => byte.toRadixString(16).padLeft(2, '0'))
+        .join()
+        .toUpperCase();
   }
 
   void _showScanResult(dynamic record) {
@@ -91,9 +203,28 @@ class _GateHomeScreenState extends State<GateHomeScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'أدخل UID تجريبيًا الآن. لاحقًا سيأتي هذا الرقم من قارئ NFC الحقيقي.',
+                    'يمكنك قراءة بطاقة NFC حقيقية أو إدخال UID يدويًا للتجربة.',
                     style: TextStyle(fontSize: 15),
                   ),
+                  const SizedBox(height: 16),
+
+                  FilledButton.icon(
+                    onPressed: _isNfcSessionActive ? null : _startRealNfcScan,
+                    icon: const Icon(Icons.sensors),
+                    label: Text(
+                      _isNfcSessionActive
+                          ? 'بانتظار البطاقة...'
+                          : 'قراءة NFC حقيقي',
+                    ),
+                  ),
+                  if (_isNfcSessionActive) ...[
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      onPressed: _stopNfcSession,
+                      icon: const Icon(Icons.close),
+                      label: const Text('إلغاء القراءة'),
+                    ),
+                  ],
                   const SizedBox(height: 16),
 
                   TextField(
