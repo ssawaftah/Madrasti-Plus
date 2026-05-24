@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/data/mock_database.dart';
+import '../../core/models/app_user.dart';
 import '../../core/models/attendance_record.dart';
 import '../../core/models/student.dart';
 import '../../core/services/auth_service.dart';
@@ -21,6 +22,17 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  List<Student> _assignedStudents(List<Student> students, AppUser teacher) {
+    if (teacher.assignedGrades.isEmpty || teacher.assignedSections.isEmpty) {
+      return [];
+    }
+
+    return students.where((student) {
+      return teacher.assignedGrades.contains(student.grade) &&
+          teacher.assignedSections.contains(student.section);
+    }).toList();
   }
 
   List<Student> _filteredStudents(List<Student> students) {
@@ -64,137 +76,181 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<int>(
-      valueListenable: MockDatabase.revision,
-      builder: (context, _, __) {
-        final allStudents = MockDatabase.students;
-        final filteredStudents = _filteredStudents(allStudents);
-        final todayRecords = _todayRecordsForStudents(filteredStudents);
-        final attendedStudentIds = todayRecords.map((record) => record.studentId).toSet();
-        final insideCount = filteredStudents.where((student) => student.isInsideSchool).length;
-        final outsideCount = filteredStudents.length - insideCount;
-        final absentTodayCount = filteredStudents
-            .where((student) => !attendedStudentIds.contains(student.id))
-            .length;
-        final grades = _uniqueGrades(allStudents);
-        final sections = _uniqueSections(allStudents);
+    final authService = AuthService();
 
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: Scaffold(
-            backgroundColor: const Color(0xFFF8FAFC),
-            appBar: AppBar(
-              title: const Text('المعلم'),
-              centerTitle: true,
-              actions: [
-                IconButton(
-                  tooltip: 'تسجيل الخروج',
-                  onPressed: () => AuthService().signOut(),
-                  icon: const Icon(Icons.logout),
+    return StreamBuilder<AppUser?>(
+      stream: authService.watchCurrentAppUser(),
+      builder: (context, userSnapshot) {
+        final teacher = userSnapshot.data;
+
+        return ValueListenableBuilder<int>(
+          valueListenable: MockDatabase.revision,
+          builder: (context, _, __) {
+            final allStudents = MockDatabase.students;
+            final assignedStudents = teacher == null
+                ? <Student>[]
+                : _assignedStudents(allStudents, teacher);
+            final filteredStudents = _filteredStudents(assignedStudents);
+            final todayRecords = _todayRecordsForStudents(filteredStudents);
+            final attendedStudentIds =
+                todayRecords.map((record) => record.studentId).toSet();
+            final insideCount = filteredStudents
+                .where((student) => student.isInsideSchool)
+                .length;
+            final outsideCount = filteredStudents.length - insideCount;
+            final absentTodayCount = filteredStudents
+                .where((student) => !attendedStudentIds.contains(student.id))
+                .length;
+            final grades = _uniqueGrades(assignedStudents);
+            final sections = _uniqueSections(assignedStudents);
+
+            return Directionality(
+              textDirection: TextDirection.rtl,
+              child: Scaffold(
+                backgroundColor: const Color(0xFFF8FAFC),
+                appBar: AppBar(
+                  title: const Text('المعلم'),
+                  centerTitle: true,
+                  actions: [
+                    IconButton(
+                      tooltip: 'تسجيل الخروج',
+                      onPressed: () => AuthService().signOut(),
+                      icon: const Icon(Icons.logout),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            body: RefreshIndicator(
-              onRefresh: () async {
-                MockDatabase.startRealtimeSync();
-                await Future<void>.delayed(const Duration(milliseconds: 350));
-              },
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  const _TeacherHeaderCard(),
-                  const SizedBox(height: 16),
-                  GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                    childAspectRatio: 1.35,
-                    children: [
-                      _MetricCard(
-                        title: 'ضمن الفلتر',
-                        value: filteredStudents.length.toString(),
-                        icon: Icons.groups,
-                        color: const Color(0xFF2563EB),
-                      ),
-                      _MetricCard(
-                        title: 'داخل المدرسة',
-                        value: insideCount.toString(),
-                        icon: Icons.check_circle,
-                        color: const Color(0xFF16A34A),
-                      ),
-                      _MetricCard(
-                        title: 'خارج المدرسة',
-                        value: outsideCount.toString(),
-                        icon: Icons.cancel,
-                        color: const Color(0xFFDC2626),
-                      ),
-                      _MetricCard(
-                        title: 'لم يحضروا اليوم',
-                        value: absentTodayCount.toString(),
-                        icon: Icons.person_off,
-                        color: const Color(0xFFF59E0B),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  _FiltersCard(
-                    searchController: _searchController,
-                    grades: grades,
-                    sections: sections,
-                    gradeFilter: _gradeFilter,
-                    sectionFilter: _sectionFilter,
-                    onSearchChanged: () => setState(() {}),
-                    onGradeChanged: (value) => setState(() => _gradeFilter = value),
-                    onSectionChanged: (value) => setState(() => _sectionFilter = value),
-                  ),
-                  const SizedBox(height: 18),
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'الطلاب',
-                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      Text(
-                        '${filteredStudents.length}/${allStudents.length}',
-                        style: TextStyle(
-                          color: Colors.grey.shade700,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  if (allStudents.isEmpty)
-                    const _EmptyCard(
-                      icon: Icons.groups_outlined,
-                      title: 'لا يوجد طلاب بعد',
-                      message: 'عند إضافة الطلاب من الإدارة سيظهرون هنا.',
-                    )
-                  else if (filteredStudents.isEmpty)
-                    const _EmptyCard(
-                      icon: Icons.search_off,
-                      title: 'لا توجد نتائج',
-                      message: 'جرّب تغيير البحث أو الفلاتر.',
-                    )
-                  else
-                    ...filteredStudents.map((student) {
-                      final records = MockDatabase.attendanceRecords
-                          .where((record) => record.studentId == student.id)
-                          .take(3)
-                          .toList();
-                      return _TeacherStudentCard(
-                        student: student,
-                        records: records,
-                      );
-                    }),
-                ],
+                body: userSnapshot.connectionState == ConnectionState.waiting
+                    ? const Center(child: CircularProgressIndicator())
+                    : teacher == null
+                        ? const _EmptyCard(
+                            icon: Icons.person_off,
+                            title: 'تعذر تحميل حساب المعلم',
+                            message: 'سجّل الخروج ثم ادخل مرة أخرى.',
+                          )
+                        : RefreshIndicator(
+                            onRefresh: () async {
+                              MockDatabase.startRealtimeSync();
+                              await Future<void>.delayed(
+                                const Duration(milliseconds: 350),
+                              );
+                            },
+                            child: ListView(
+                              padding: const EdgeInsets.all(16),
+                              children: [
+                                _TeacherHeaderCard(teacher: teacher),
+                                const SizedBox(height: 16),
+                                if (teacher.assignedGrades.isEmpty ||
+                                    teacher.assignedSections.isEmpty)
+                                  const _EmptyCard(
+                                    icon: Icons.assignment_ind,
+                                    title: 'لم يتم تعيين صفوف لك بعد',
+                                    message:
+                                        'اطلب من الإدارة تعيين الصفوف والشُعب الخاصة بك من قسم المستخدمين.',
+                                  )
+                                else ...[
+                                  GridView.count(
+                                    crossAxisCount: 2,
+                                    shrinkWrap: true,
+                                    physics:
+                                        const NeverScrollableScrollPhysics(),
+                                    crossAxisSpacing: 10,
+                                    mainAxisSpacing: 10,
+                                    childAspectRatio: 1.35,
+                                    children: [
+                                      _MetricCard(
+                                        title: 'ضمن الفلتر',
+                                        value: filteredStudents.length.toString(),
+                                        icon: Icons.groups,
+                                        color: const Color(0xFF2563EB),
+                                      ),
+                                      _MetricCard(
+                                        title: 'داخل المدرسة',
+                                        value: insideCount.toString(),
+                                        icon: Icons.check_circle,
+                                        color: const Color(0xFF16A34A),
+                                      ),
+                                      _MetricCard(
+                                        title: 'خارج المدرسة',
+                                        value: outsideCount.toString(),
+                                        icon: Icons.cancel,
+                                        color: const Color(0xFFDC2626),
+                                      ),
+                                      _MetricCard(
+                                        title: 'لم يحضروا اليوم',
+                                        value: absentTodayCount.toString(),
+                                        icon: Icons.person_off,
+                                        color: const Color(0xFFF59E0B),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 18),
+                                  _FiltersCard(
+                                    searchController: _searchController,
+                                    grades: grades,
+                                    sections: sections,
+                                    gradeFilter: _gradeFilter,
+                                    sectionFilter: _sectionFilter,
+                                    onSearchChanged: () => setState(() {}),
+                                    onGradeChanged: (value) =>
+                                        setState(() => _gradeFilter = value),
+                                    onSectionChanged: (value) =>
+                                        setState(() => _sectionFilter = value),
+                                  ),
+                                  const SizedBox(height: 18),
+                                  Row(
+                                    children: [
+                                      const Expanded(
+                                        child: Text(
+                                          'الطلاب',
+                                          style: TextStyle(
+                                            fontSize: 22,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      Text(
+                                        '${filteredStudents.length}/${assignedStudents.length}',
+                                        style: TextStyle(
+                                          color: Colors.grey.shade700,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  if (assignedStudents.isEmpty)
+                                    const _EmptyCard(
+                                      icon: Icons.groups_outlined,
+                                      title: 'لا يوجد طلاب ضمن التعيين',
+                                      message:
+                                          'تأكد أن الصفوف والشُعب المعينة تحتوي طلابًا.',
+                                    )
+                                  else if (filteredStudents.isEmpty)
+                                    const _EmptyCard(
+                                      icon: Icons.search_off,
+                                      title: 'لا توجد نتائج',
+                                      message: 'جرّب تغيير البحث أو الفلاتر.',
+                                    )
+                                  else
+                                    ...filteredStudents.map((student) {
+                                      final records = MockDatabase
+                                          .attendanceRecords
+                                          .where((record) =>
+                                              record.studentId == student.id)
+                                          .take(3)
+                                          .toList();
+                                      return _TeacherStudentCard(
+                                        student: student,
+                                        records: records,
+                                      );
+                                    }),
+                                ],
+                              ],
+                            ),
+                          ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
@@ -202,10 +258,17 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
 }
 
 class _TeacherHeaderCard extends StatelessWidget {
-  const _TeacherHeaderCard();
+  final AppUser teacher;
+
+  const _TeacherHeaderCard({required this.teacher});
 
   @override
   Widget build(BuildContext context) {
+    final assignedText = teacher.assignedGrades.isEmpty ||
+            teacher.assignedSections.isEmpty
+        ? 'لم يتم تعيين صفوف وشُعب بعد.'
+        : 'الصفوف: ${teacher.assignedGrades.join(', ')} | الشعب: ${teacher.assignedSections.join(', ')}';
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -223,15 +286,15 @@ class _TeacherHeaderCard extends StatelessWidget {
           ),
         ],
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Icon(Icons.co_present, color: Colors.white, size: 40),
-          SizedBox(width: 14),
+          const Icon(Icons.co_present, color: Colors.white, size: 40),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'لوحة المعلم',
                   style: TextStyle(
                     color: Colors.white,
@@ -239,10 +302,10 @@ class _TeacherHeaderCard extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(height: 6),
+                const SizedBox(height: 6),
                 Text(
-                  'تابع حالة الطلاب وحضورهم لحظيًا.',
-                  style: TextStyle(color: Colors.white70, height: 1.4),
+                  assignedText,
+                  style: const TextStyle(color: Colors.white70, height: 1.4),
                 ),
               ],
             ),
@@ -356,10 +419,7 @@ class _TeacherStudentCard extends StatelessWidget {
   final Student student;
   final List<AttendanceRecord> records;
 
-  const _TeacherStudentCard({
-    required this.student,
-    required this.records,
-  });
+  const _TeacherStudentCard({required this.student, required this.records});
 
   @override
   Widget build(BuildContext context) {
@@ -384,21 +444,14 @@ class _TeacherStudentCard extends StatelessWidget {
             color: color,
           ),
         ),
-        title: Text(
-          student.fullName,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
+        title: Text(student.fullName, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text('${student.grade} - ${student.section} | $statusText'),
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
         children: [
           Row(
             children: [
               Expanded(
-                child: _SmallInfoBox(
-                  title: 'الحالة',
-                  value: statusText,
-                  color: color,
-                ),
+                child: _SmallInfoBox(title: 'الحالة', value: statusText, color: color),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -415,10 +468,7 @@ class _TeacherStudentCard extends StatelessWidget {
             alignment: Alignment.centerRight,
             child: Text(
               'آخر الحركات',
-              style: TextStyle(
-                color: Colors.grey.shade800,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(color: Colors.grey.shade800, fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(height: 6),
@@ -461,11 +511,7 @@ class _SmallInfoBox extends StatelessWidget {
   final String value;
   final Color color;
 
-  const _SmallInfoBox({
-    required this.title,
-    required this.value,
-    required this.color,
-  });
+  const _SmallInfoBox({required this.title, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -482,11 +528,7 @@ class _SmallInfoBox extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             value,
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-            ),
+            style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 14),
           ),
         ],
       ),
@@ -523,11 +565,7 @@ class _MetricCard extends StatelessWidget {
             const SizedBox(height: 10),
             Text(
               value,
-              style: TextStyle(
-                color: color,
-                fontSize: 26,
-                fontWeight: FontWeight.w900,
-              ),
+              style: TextStyle(color: color, fontSize: 26, fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 4),
             Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
@@ -543,11 +581,7 @@ class _EmptyCard extends StatelessWidget {
   final String title;
   final String message;
 
-  const _EmptyCard({
-    required this.icon,
-    required this.title,
-    required this.message,
-  });
+  const _EmptyCard({required this.icon, required this.title, required this.message});
 
   @override
   Widget build(BuildContext context) {
@@ -558,13 +592,11 @@ class _EmptyCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 54, color: Colors.grey.shade500),
             const SizedBox(height: 12),
-            Text(
-              title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
+            Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             Text(
               message,
