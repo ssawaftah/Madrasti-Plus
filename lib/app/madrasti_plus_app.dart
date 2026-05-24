@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../features/home/home_screen.dart';
+
+import '../features/auth/auth_gate.dart';
 
 class MadrastiPlusApp extends StatelessWidget {
   const MadrastiPlusApp({super.key});
@@ -13,7 +14,7 @@ class MadrastiPlusApp extends StatelessWidget {
         useMaterial3: true,
         colorSchemeSeed: const Color(0xFF2563EB),
       ),
-      home: const HomeScreen(),
+      home: const AuthGate(),
     );
   }
 }
