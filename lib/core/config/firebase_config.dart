@@ -5,7 +5,7 @@ class FirebaseConfig {
 
   static const String defaultSchoolId = 'school_001';
 
-  // Cloud Firestore database ID. The default Firebase database ID is "(default)".
-  // If you created a named Firestore database, replace this value with its ID.
-  static const String firestoreDatabaseId = '(default)';
+  // Cloud Firestore database ID from Firebase Console URL:
+  // /firestore/databases/default/data
+  static const String firestoreDatabaseId = 'default';
 }
