@@ -111,6 +111,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                 actions: [
                   TextButton(
                     onPressed: () async {
+                      FocusScope.of(dialogContext).unfocus();
                       await _stopNfcSession();
                       if (dialogContext.mounted) {
                         Navigator.of(dialogContext).pop();
@@ -123,6 +124,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                       studentId: studentId,
                       uid: controller.text,
                       onSuccess: () {
+                        FocusScope.of(dialogContext).unfocus();
                         Navigator.of(dialogContext).pop();
                       },
                     ),
@@ -136,7 +138,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       },
     ).whenComplete(() {
       _stopNfcSession();
-      controller.dispose();
     });
   }
 
@@ -278,7 +279,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               style: TextStyle(fontSize: 15),
             ),
             const SizedBox(height: 16),
-
             Row(
               children: [
                 Expanded(
@@ -306,17 +306,14 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                 ),
               ],
             ),
-
             const SizedBox(height: 28),
             const Divider(),
             const SizedBox(height: 16),
-
             const Text(
               'إضافة طالب',
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-
             TextField(
               controller: _nameController,
               decoration: const InputDecoration(
@@ -325,7 +322,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               ),
             ),
             const SizedBox(height: 12),
-
             TextField(
               controller: _gradeController,
               decoration: const InputDecoration(
@@ -334,7 +330,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               ),
             ),
             const SizedBox(height: 12),
-
             TextField(
               controller: _sectionController,
               decoration: const InputDecoration(
@@ -343,23 +338,19 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               ),
             ),
             const SizedBox(height: 16),
-
             FilledButton.icon(
               onPressed: _addStudent,
               icon: const Icon(Icons.add),
               label: const Text('إضافة الطالب'),
             ),
-
             const SizedBox(height: 28),
             const Divider(),
             const SizedBox(height: 16),
-
             Text(
               'الطلاب (${students.length})',
               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
-
             if (students.isEmpty)
               const Text('لا يوجد طلاب بعد. أضف أول طالب وخلينا نولّعها.')
             else
@@ -399,17 +390,14 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                   );
                 },
               ),
-
             const SizedBox(height: 28),
             const Divider(),
             const SizedBox(height: 16),
-
             const Text(
               'سجل الحضور العام',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
-
             if (records.isEmpty)
               const Text('لا يوجد عمليات حضور بعد.')
             else
