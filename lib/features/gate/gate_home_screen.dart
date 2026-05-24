@@ -10,9 +10,43 @@ class GateHomeScreen extends StatefulWidget {
 }
 
 class _GateHomeScreenState extends State<GateHomeScreen> {
-  void _simulateScan(String studentId) {
-    final record = MockDatabase.toggleStudentAttendance(studentId);
+  final _nfcUidController = TextEditingController();
 
+  @override
+  void dispose() {
+    _nfcUidController.dispose();
+    super.dispose();
+  }
+
+  void _simulateScanByStudentId(String studentId) {
+    final record = MockDatabase.toggleStudentAttendance(studentId);
+    _showScanResult(record);
+  }
+
+  void _simulateScanByNfcUid() {
+    final uid = _nfcUidController.text.trim();
+
+    if (uid.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('أدخل NFC UID أولًا')),
+      );
+      return;
+    }
+
+    final record = MockDatabase.toggleStudentAttendanceByNfcUid(uid);
+
+    if (record == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('لم يتم العثور على طالب مرتبط بهذا UID')),
+      );
+      return;
+    }
+
+    _nfcUidController.clear();
+    _showScanResult(record);
+  }
+
+  void _showScanResult(dynamic record) {
     if (record == null) return;
 
     setState(() {});
@@ -52,15 +86,47 @@ class _GateHomeScreenState extends State<GateHomeScreen> {
                 padding: const EdgeInsets.all(16),
                 children: [
                   const Text(
-                    'محاكاة مسح بطاقة الطالب',
+                    'مسح بطاقة الطالب',
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'هذه خطوة تجريبية قبل ربط NFC الحقيقي.',
+                    'أدخل UID تجريبيًا الآن. لاحقًا سيأتي هذا الرقم من قارئ NFC الحقيقي.',
                     style: TextStyle(fontSize: 15),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
+
+                  TextField(
+                    controller: _nfcUidController,
+                    decoration: const InputDecoration(
+                      labelText: 'NFC UID',
+                      hintText: 'مثال: 04A1B2C3D4',
+                      border: OutlineInputBorder(),
+                    ),
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _simulateScanByNfcUid(),
+                  ),
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    onPressed: _simulateScanByNfcUid,
+                    icon: const Icon(Icons.nfc),
+                    label: const Text('مسح UID تجريبي'),
+                  ),
+
+                  const SizedBox(height: 28),
+                  const Divider(),
+                  const SizedBox(height: 16),
+
+                  const Text(
+                    'اختبار سريع بدون UID',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'هذا الخيار مؤقت للتجربة السريعة أثناء التطوير.',
+                    style: TextStyle(fontSize: 15),
+                  ),
+                  const SizedBox(height: 16),
 
                   ...students.map((student) {
                     final statusText = student.isInsideSchool
@@ -71,16 +137,22 @@ class _GateHomeScreenState extends State<GateHomeScreen> {
                         ? 'لا يوجد تسجيل بعد'
                         : 'آخر تسجيل: ${_formatTime(student.lastAttendanceAt!)}';
 
+                    final uidText = student.nfcUid == null
+                        ? 'لا يوجد UID مرتبط'
+                        : 'UID: ${student.nfcUid}';
+
                     return Card(
                       child: ListTile(
                         leading: Icon(
                           student.isInsideSchool ? Icons.login : Icons.logout,
                         ),
                         title: Text(student.fullName),
-                        subtitle: Text('الحالة: $statusText\n$lastScanText'),
+                        subtitle: Text(
+                          'الحالة: $statusText\n$uidText\n$lastScanText',
+                        ),
                         isThreeLine: true,
                         trailing: FilledButton(
-                          onPressed: () => _simulateScan(student.id),
+                          onPressed: () => _simulateScanByStudentId(student.id),
                           child: const Text('مسح تجريبي'),
                         ),
                       ),
