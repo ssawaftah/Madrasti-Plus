@@ -59,7 +59,7 @@ class AuthService {
       throw StateError('تعذر تسجيل الدخول');
     }
 
-    final appUser = await getOrCreateCurrentAppUser();
+    final appUser = await getCurrentAppUserOrThrow();
     final normalizedSchoolCode = (schoolCode ?? '').trim().toUpperCase();
 
     if (appUser.role == 'super_admin') {
@@ -94,34 +94,30 @@ class AuthService {
     return _firebaseAuth.signOut();
   }
 
-  Future<AppUser> getOrCreateCurrentAppUser() async {
+  Future<AppUser> getCurrentAppUserOrThrow() async {
     final firebaseUser = _firebaseAuth.currentUser;
 
     if (firebaseUser == null) {
       throw StateError('لا يوجد مستخدم مسجل دخول');
     }
 
-    final docRef = _firestore.collection('users').doc(firebaseUser.uid);
-    final snapshot = await docRef.get();
+    final snapshot = await _firestore.collection('users').doc(firebaseUser.uid).get();
 
-    if (snapshot.exists && snapshot.data() != null) {
-      return AppUser.fromJson({
-        ...snapshot.data()!,
-        'id': snapshot.id,
-      });
+    if (!snapshot.exists || snapshot.data() == null) {
+      await _firebaseAuth.signOut();
+      throw const SchoolCodeException(
+        'هذا الحساب موجود في Authentication لكنه غير مهيأ داخل النظام. أنشئه من لوحة Super Admin أو المستخدمين.',
+      );
     }
 
-    final newUser = AppUser(
-      id: firebaseUser.uid,
-      fullName: firebaseUser.displayName ?? 'مدير النظام',
-      email: firebaseUser.email ?? '',
-      role: 'admin',
-      schoolId: FirebaseConfig.defaultSchoolId,
-      schoolCode: SchoolSessionService.activeSchoolCode,
-    );
+    return AppUser.fromJson({
+      ...snapshot.data()!,
+      'id': snapshot.id,
+    });
+  }
 
-    await docRef.set(newUser.toJson());
-    return newUser;
+  Future<AppUser> getOrCreateCurrentAppUser() async {
+    return getCurrentAppUserOrThrow();
   }
 }
 
