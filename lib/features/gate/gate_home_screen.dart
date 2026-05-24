@@ -62,6 +62,11 @@ class _GateHomeScreenState extends State<GateHomeScreen> {
     );
 
     await NfcManager.instance.startSession(
+      pollingOptions: {
+        NfcPollingOption.iso14443,
+        NfcPollingOption.iso15693,
+        NfcPollingOption.iso18092,
+      },
       onDiscovered: (NfcTag tag) async {
         final uid = _extractUidFromTag(tag);
 
@@ -118,20 +123,31 @@ class _GateHomeScreenState extends State<GateHomeScreen> {
   }
 
   String? _extractUidFromTag(NfcTag tag) {
-    final data = tag.data;
+    final tagData = tag.data;
 
+    if (tagData is! Map) return null;
+
+    final data = Map<String, dynamic>.from(tagData);
     final candidates = <dynamic>[
-      data['nfca']?['identifier'],
-      data['mifareclassic']?['identifier'],
-      data['mifareultralight']?['identifier'],
-      data['ndef']?['identifier'],
-      data['iso7816']?['identifier'],
-      data['iso15693']?['identifier'],
+      _identifierFromTechnology(data['nfca']),
+      _identifierFromTechnology(data['mifareclassic']),
+      _identifierFromTechnology(data['mifareultralight']),
+      _identifierFromTechnology(data['ndef']),
+      _identifierFromTechnology(data['iso7816']),
+      _identifierFromTechnology(data['iso15693']),
     ];
 
     for (final candidate in candidates) {
       final uid = _bytesToHex(candidate);
       if (uid != null && uid.isNotEmpty) return uid;
+    }
+
+    return null;
+  }
+
+  dynamic _identifierFromTechnology(dynamic technologyData) {
+    if (technologyData is Map) {
+      return technologyData['identifier'];
     }
 
     return null;
