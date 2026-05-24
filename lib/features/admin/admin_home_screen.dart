@@ -3,6 +3,7 @@ import 'package:nfc_manager/nfc_manager.dart';
 
 import '../../core/data/mock_database.dart';
 import '../../core/services/nfc_uid_reader.dart';
+import 'widgets/firebase_sync_button.dart';
 
 class AdminHomeScreen extends StatefulWidget {
   const AdminHomeScreen({super.key});
@@ -306,6 +307,8 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 12),
+            const FirebaseSyncButton(),
             const SizedBox(height: 28),
             const Divider(),
             const SizedBox(height: 16),
