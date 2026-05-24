@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:nfc_manager/nfc_manager.dart';
+import 'package:nfc_manager/nfc_manager_android.dart';
 
 import '../../core/data/mock_database.dart';
 
@@ -121,6 +122,11 @@ class _GateHomeScreenState extends State<GateHomeScreen> {
   }
 
   String? _extractUidFromTag(NfcTag tag) {
+    final androidTag = NfcTagAndroid.from(tag);
+    final androidUid = _bytesToHex(androidTag?.id);
+
+    if (_looksLikeUid(androidUid)) return androidUid;
+
     final tagData = tag.data;
 
     if (tagData is! Map) return null;
