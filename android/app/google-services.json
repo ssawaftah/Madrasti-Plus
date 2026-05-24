@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "617244020392",
+    "firebase_url": "https://zubex-ce99d-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "zubex-ce99d",
+    "storage_bucket": "zubex-ce99d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:617244020392:android:d79e3d6455945a2a4f3c9d",
+        "android_client_info": {
+          "package_name": "com.example.madrasti_plus"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDguzKz7bBDIfRjU0F8Q-xwp5EwhiZCc4k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
