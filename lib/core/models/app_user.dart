@@ -5,6 +5,8 @@ class AppUser {
   final String role;
   final String schoolId;
   final List<String> linkedStudentIds;
+  final List<String> assignedGrades;
+  final List<String> assignedSections;
 
   const AppUser({
     required this.id,
@@ -13,6 +15,8 @@ class AppUser {
     required this.role,
     required this.schoolId,
     this.linkedStudentIds = const [],
+    this.assignedGrades = const [],
+    this.assignedSections = const [],
   });
 
   factory AppUser.fromJson(Map<String, dynamic> json) {
@@ -25,6 +29,12 @@ class AppUser {
       linkedStudentIds: (json['linkedStudentIds'] as List<dynamic>? ?? [])
           .map((item) => item.toString())
           .toList(),
+      assignedGrades: (json['assignedGrades'] as List<dynamic>? ?? [])
+          .map((item) => item.toString())
+          .toList(),
+      assignedSections: (json['assignedSections'] as List<dynamic>? ?? [])
+          .map((item) => item.toString())
+          .toList(),
     );
   }
 
@@ -35,6 +45,8 @@ class AppUser {
       'role': role,
       'schoolId': schoolId,
       'linkedStudentIds': linkedStudentIds,
+      'assignedGrades': assignedGrades,
+      'assignedSections': assignedSections,
     };
   }
 }
