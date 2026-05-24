@@ -4,6 +4,7 @@ import 'package:nfc_manager/nfc_manager.dart';
 import '../../core/data/mock_database.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/nfc_uid_reader.dart';
+import 'widgets/admin_students_section.dart';
 import 'widgets/admin_users_section.dart';
 import 'widgets/firebase_sync_button.dart';
 
@@ -50,12 +51,76 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     _gradeController.clear();
     _sectionController.clear();
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('تمت إضافة الطالب بنجاح')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('تمت إضافة الطالب بنجاح')),
+    );
   }
 
-  void _showLinkNfcDialog(String studentId, String studentName) {
+  void _showLinkNfcDialog() {
+    final students = MockDatabase.students;
+
+    if (students.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('أضف طالبًا أولًا قبل ربط NFC')),
+      );
+      return;
+    }
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'اختر طالبًا لربط بطاقة NFC',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  Flexible(
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: students.length,
+                      itemBuilder: (context, index) {
+                        final student = students[index];
+                        return Card(
+                          child: ListTile(
+                            leading: const Icon(Icons.nfc),
+                            title: Text(student.fullName),
+                            subtitle: Text(
+                              student.nfcUid == null
+                                  ? '${student.grade} - ${student.section} | NFC غير مربوط'
+                                  : '${student.grade} - ${student.section} | UID: ${student.nfcUid}',
+                            ),
+                            onTap: () {
+                              Navigator.of(sheetContext).pop();
+                              _showLinkNfcDialogForStudent(
+                                student.id,
+                                student.fullName,
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showLinkNfcDialogForStudent(String studentId, String studentName) {
     final controller = TextEditingController();
 
     showDialog<void>(
@@ -91,9 +156,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                               ),
                       icon: const Icon(Icons.sensors),
                       label: Text(
-                        _isNfcSessionActive
-                            ? 'بانتظار البطاقة...'
-                            : 'قراءة البطاقة الآن',
+                        _isNfcSessionActive ? 'بانتظار البطاقة...' : 'قراءة البطاقة الآن',
                       ),
                     ),
                     if (_isNfcSessionActive) ...[
@@ -157,15 +220,8 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       return;
     }
 
-    setState(() {
-      _isNfcSessionActive = true;
-    });
+    setState(() => _isNfcSessionActive = true);
     setDialogState(() {});
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('قرّب بطاقة NFC من الهاتف الآن')),
-    );
 
     await NfcManager.instance.startSession(
       pollingOptions: {
@@ -175,7 +231,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       },
       onDiscovered: (NfcTag tag) async {
         final uid = NfcUidReader.extractUid(tag);
-
         await _stopNfcSession();
 
         if (!mounted) return;
@@ -199,14 +254,10 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
 
     try {
       await NfcManager.instance.stopSession();
-    } catch (_) {
-      // Ignore stop errors during hot reload/navigation.
-    }
+    } catch (_) {}
 
     if (mounted) {
-      setState(() {
-        _isNfcSessionActive = false;
-      });
+      setState(() => _isNfcSessionActive = false);
     } else {
       _isNfcSessionActive = false;
     }
@@ -226,20 +277,14 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       return;
     }
 
-    if (MockDatabase.isNfcUidAlreadyLinked(
-      normalizedUid,
-      exceptStudentId: studentId,
-    )) {
+    if (MockDatabase.isNfcUidAlreadyLinked(normalizedUid, exceptStudentId: studentId)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('هذا UID مربوط بطالب آخر بالفعل')),
       );
       return;
     }
 
-    MockDatabase.linkNfcUidToStudent(
-      studentId: studentId,
-      nfcUid: normalizedUid,
-    );
+    MockDatabase.linkNfcUidToStudent(studentId: studentId, nfcUid: normalizedUid);
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('تم ربط بطاقة NFC بنجاح')),
@@ -272,6 +317,11 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               centerTitle: true,
               actions: [
                 IconButton(
+                  tooltip: 'ربط NFC سريع',
+                  onPressed: _showLinkNfcDialog,
+                  icon: const Icon(Icons.nfc),
+                ),
+                IconButton(
                   tooltip: 'تسجيل الخروج',
                   onPressed: () => AuthService().signOut(),
                   icon: const Icon(Icons.logout),
@@ -287,34 +337,22 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'نظرة سريعة على الطلاب وحالة الحضور التجريبية.',
+                  'إدارة الطلاب، المستخدمين، وربط بطاقات NFC.',
                   style: TextStyle(fontSize: 15),
                 ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
                     Expanded(
-                      child: _StatCard(
-                        title: 'الطلاب',
-                        value: students.length.toString(),
-                        icon: Icons.groups,
-                      ),
+                      child: _StatCard(title: 'الطلاب', value: students.length.toString(), icon: Icons.groups),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _StatCard(
-                        title: 'داخل المدرسة',
-                        value: insideCount.toString(),
-                        icon: Icons.check_circle,
-                      ),
+                      child: _StatCard(title: 'داخل المدرسة', value: insideCount.toString(), icon: Icons.check_circle),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _StatCard(
-                        title: 'خارج المدرسة',
-                        value: outsideCount.toString(),
-                        icon: Icons.cancel,
-                      ),
+                      child: _StatCard(title: 'خارج المدرسة', value: outsideCount.toString(), icon: Icons.cancel),
                     ),
                   ],
                 ),
@@ -334,26 +372,17 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                 const SizedBox(height: 16),
                 TextField(
                   controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'اسم الطالب',
-                    border: OutlineInputBorder(),
-                  ),
+                  decoration: const InputDecoration(labelText: 'اسم الطالب', border: OutlineInputBorder()),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _gradeController,
-                  decoration: const InputDecoration(
-                    labelText: 'الصف',
-                    border: OutlineInputBorder(),
-                  ),
+                  decoration: const InputDecoration(labelText: 'الصف', border: OutlineInputBorder()),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _sectionController,
-                  decoration: const InputDecoration(
-                    labelText: 'الشعبة',
-                    border: OutlineInputBorder(),
-                  ),
+                  decoration: const InputDecoration(labelText: 'الشعبة', border: OutlineInputBorder()),
                 ),
                 const SizedBox(height: 16),
                 FilledButton.icon(
@@ -364,50 +393,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                 const SizedBox(height: 28),
                 const Divider(),
                 const SizedBox(height: 16),
-                Text(
-                  'الطلاب (${students.length})',
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 12),
-                if (students.isEmpty)
-                  const Text('لا يوجد طلاب بعد. أضف أول طالب وخلينا نولّعها.')
-                else
-                  ...students.map(
-                    (student) {
-                      final statusText = student.isInsideSchool
-                          ? 'داخل المدرسة'
-                          : 'خارج المدرسة';
-                      final lastScanText = student.lastAttendanceAt == null
-                          ? 'لا يوجد تسجيل بعد'
-                          : 'آخر تسجيل: ${_formatTime(student.lastAttendanceAt!)}';
-                      final uidText = student.nfcUid == null
-                          ? 'لا يوجد UID مرتبط'
-                          : 'UID: ${student.nfcUid}';
-
-                      return Card(
-                        child: ListTile(
-                          leading: Icon(
-                            student.isInsideSchool
-                                ? Icons.check_circle
-                                : Icons.cancel,
-                          ),
-                          title: Text(student.fullName),
-                          subtitle: Text(
-                            'الصف: ${student.grade} - الشعبة: ${student.section}\nالحالة: $statusText\n$uidText\n$lastScanText',
-                          ),
-                          isThreeLine: true,
-                          trailing: IconButton(
-                            tooltip: 'ربط NFC',
-                            icon: const Icon(Icons.nfc),
-                            onPressed: () => _showLinkNfcDialog(
-                              student.id,
-                              student.fullName,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                const AdminStudentsSection(),
                 const SizedBox(height: 28),
                 const Divider(),
                 const SizedBox(height: 16),
@@ -419,19 +405,16 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                 if (records.isEmpty)
                   const Text('لا يوجد عمليات حضور بعد.')
                 else
-                  ...records.map(
-                    (record) {
-                      final typeText = record.isCheckIn ? 'دخول' : 'خروج';
-
-                      return Card(
-                        child: ListTile(
-                          leading: Icon(record.isCheckIn ? Icons.login : Icons.logout),
-                          title: Text('${record.studentName} - $typeText'),
-                          subtitle: Text('الوقت: ${_formatTime(record.timestamp)}'),
-                        ),
-                      );
-                    },
-                  ),
+                  ...records.map((record) {
+                    final typeText = record.isCheckIn ? 'دخول' : 'خروج';
+                    return Card(
+                      child: ListTile(
+                        leading: Icon(record.isCheckIn ? Icons.login : Icons.logout),
+                        title: Text('${record.studentName} - $typeText'),
+                        subtitle: Text('الوقت: ${_formatTime(record.timestamp)}'),
+                      ),
+                    );
+                  }),
               ],
             ),
           ),
@@ -446,11 +429,7 @@ class _StatCard extends StatelessWidget {
   final String value;
   final IconData icon;
 
-  const _StatCard({
-    required this.title,
-    required this.value,
-    required this.icon,
-  });
+  const _StatCard({required this.title, required this.value, required this.icon});
 
   @override
   Widget build(BuildContext context) {
@@ -462,10 +441,7 @@ class _StatCard extends StatelessWidget {
           children: [
             Icon(icon),
             const SizedBox(height: 12),
-            Text(
-              value,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
+            Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
             Text(title),
           ],
