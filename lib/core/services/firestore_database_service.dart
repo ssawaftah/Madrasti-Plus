@@ -117,6 +117,10 @@ class FirestoreDatabaseService {
     await _studentsCollection.doc(student.id).set(student.toJson()..remove('id'));
   }
 
+  Future<void> deleteStudent(String studentId) async {
+    await _studentsCollection.doc(studentId).delete();
+  }
+
   Future<void> addAttendanceRecord(AttendanceRecord record) async {
     await ensureSchoolDocumentExists();
     await _attendanceRecordsCollection
