@@ -4,6 +4,7 @@ class AppUser {
   final String email;
   final String role;
   final String schoolId;
+  final String schoolCode;
   final List<String> linkedStudentIds;
   final List<String> assignedGrades;
   final List<String> assignedSections;
@@ -14,6 +15,7 @@ class AppUser {
     required this.email,
     required this.role,
     required this.schoolId,
+    this.schoolCode = '',
     this.linkedStudentIds = const [],
     this.assignedGrades = const [],
     this.assignedSections = const [],
@@ -26,6 +28,7 @@ class AppUser {
       email: json['email'] as String? ?? '',
       role: json['role'] as String? ?? 'parent',
       schoolId: json['schoolId'] as String? ?? 'school_001',
+      schoolCode: json['schoolCode'] as String? ?? '',
       linkedStudentIds: (json['linkedStudentIds'] as List<dynamic>? ?? [])
           .map((item) => item.toString())
           .toList(),
@@ -44,6 +47,7 @@ class AppUser {
       'email': email,
       'role': role,
       'schoolId': schoolId,
+      'schoolCode': schoolCode,
       'linkedStudentIds': linkedStudentIds,
       'assignedGrades': assignedGrades,
       'assignedSections': assignedSections,
