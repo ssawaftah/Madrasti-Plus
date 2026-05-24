@@ -4,10 +4,10 @@ import 'package:nfc_manager/nfc_manager.dart';
 import '../../core/data/mock_database.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/nfc_uid_reader.dart';
+import 'widgets/admin_dashboard_section.dart';
 import 'widgets/admin_students_section.dart';
 import 'widgets/admin_users_section.dart';
 import 'widgets/daily_attendance_report_section.dart';
-import 'widgets/firebase_sync_button.dart';
 
 class AdminHomeScreen extends StatefulWidget {
   const AdminHomeScreen({super.key});
@@ -31,7 +31,74 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     super.dispose();
   }
 
-  void _addStudent() {
+  void _showAddStudentSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 16,
+              bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 16,
+            ),
+            child: SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'إضافة طالب جديد',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'اسم الطالب',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _gradeController,
+                    decoration: const InputDecoration(
+                      labelText: 'الصف',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _sectionController,
+                    decoration: const InputDecoration(
+                      labelText: 'الشعبة',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: () {
+                      final added = _addStudent();
+                      if (added && sheetContext.mounted) {
+                        Navigator.of(sheetContext).pop();
+                      }
+                    },
+                    icon: const Icon(Icons.add),
+                    label: const Text('إضافة الطالب'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  bool _addStudent() {
     final name = _nameController.text.trim();
     final grade = _gradeController.text.trim();
     final section = _sectionController.text.trim();
@@ -40,7 +107,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('عبّي كل الحقول يا مدير 👀')),
       );
-      return;
+      return false;
     }
 
     MockDatabase.addStudent(
@@ -55,6 +122,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('تمت إضافة الطالب بنجاح')),
     );
+    return true;
   }
 
   void _showLinkNfcDialog() {
@@ -157,7 +225,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                               ),
                       icon: const Icon(Icons.sensors),
                       label: Text(
-                        _isNfcSessionActive ? 'بانتظار البطاقة...' : 'قراءة البطاقة الآن',
+                        _isNfcSessionActive
+                            ? 'بانتظار البطاقة...'
+                            : 'قراءة البطاقة الآن',
                       ),
                     ),
                     if (_isNfcSessionActive) ...[
@@ -294,164 +364,152 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     onSuccess?.call();
   }
 
-  String _formatTime(DateTime dateTime) {
-    final hour = dateTime.hour.toString().padLeft(2, '0');
-    final minute = dateTime.minute.toString().padLeft(2, '0');
-    return '$hour:$minute';
-  }
-
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<int>(
-      valueListenable: MockDatabase.revision,
-      builder: (context, _, __) {
-        final students = MockDatabase.students;
-        final records = MockDatabase.attendanceRecords;
-        final insideCount = MockDatabase.insideSchoolCount;
-        final outsideCount = MockDatabase.outsideSchoolCount;
-
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: Scaffold(
-            appBar: AppBar(
-              title: const Text('الإدارة'),
-              centerTitle: true,
-              actions: [
-                IconButton(
-                  tooltip: 'ربط NFC سريع',
-                  onPressed: _showLinkNfcDialog,
-                  icon: const Icon(Icons.nfc),
-                ),
-                IconButton(
-                  tooltip: 'تسجيل الخروج',
-                  onPressed: () => AuthService().signOut(),
-                  icon: const Icon(Icons.logout),
-                ),
-              ],
-            ),
-            body: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                const Text(
-                  'لوحة الإدارة',
-                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'إدارة الطلاب، المستخدمين، التقارير، وربط بطاقات NFC.',
-                  style: TextStyle(fontSize: 15),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _StatCard(title: 'الطلاب', value: students.length.toString(), icon: Icons.groups),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _StatCard(title: 'داخل المدرسة', value: insideCount.toString(), icon: Icons.check_circle),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _StatCard(title: 'خارج المدرسة', value: outsideCount.toString(), icon: Icons.cancel),
-                    ),
+    return DefaultTabController(
+      length: 5,
+      child: ValueListenableBuilder<int>(
+        valueListenable: MockDatabase.revision,
+        builder: (context, _, __) {
+          return Directionality(
+            textDirection: TextDirection.rtl,
+            child: Scaffold(
+              appBar: AppBar(
+                title: const Text('الإدارة'),
+                centerTitle: true,
+                actions: [
+                  IconButton(
+                    tooltip: 'إضافة طالب',
+                    onPressed: _showAddStudentSheet,
+                    icon: const Icon(Icons.person_add_alt_1),
+                  ),
+                  IconButton(
+                    tooltip: 'ربط NFC سريع',
+                    onPressed: _showLinkNfcDialog,
+                    icon: const Icon(Icons.nfc),
+                  ),
+                  IconButton(
+                    tooltip: 'تسجيل الخروج',
+                    onPressed: () => AuthService().signOut(),
+                    icon: const Icon(Icons.logout),
+                  ),
+                ],
+                bottom: const TabBar(
+                  isScrollable: true,
+                  tabs: [
+                    Tab(icon: Icon(Icons.dashboard), text: 'الرئيسية'),
+                    Tab(icon: Icon(Icons.analytics), text: 'التقرير'),
+                    Tab(icon: Icon(Icons.groups), text: 'الطلاب'),
+                    Tab(icon: Icon(Icons.manage_accounts), text: 'المستخدمون'),
+                    Tab(icon: Icon(Icons.receipt_long), text: 'السجل'),
                   ],
                 ),
-                const SizedBox(height: 12),
-                const FirebaseSyncButton(),
-                const SizedBox(height: 28),
-                const Divider(),
-                const SizedBox(height: 16),
-                const DailyAttendanceReportSection(),
-                const SizedBox(height: 28),
-                const Divider(),
-                const SizedBox(height: 16),
-                const AdminUsersSection(),
-                const SizedBox(height: 28),
-                const Divider(),
-                const SizedBox(height: 16),
-                const Text(
-                  'إضافة طالب',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(labelText: 'اسم الطالب', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _gradeController,
-                  decoration: const InputDecoration(labelText: 'الصف', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _sectionController,
-                  decoration: const InputDecoration(labelText: 'الشعبة', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: 16),
-                FilledButton.icon(
-                  onPressed: _addStudent,
-                  icon: const Icon(Icons.add),
-                  label: const Text('إضافة الطالب'),
-                ),
-                const SizedBox(height: 28),
-                const Divider(),
-                const SizedBox(height: 16),
-                const AdminStudentsSection(),
-                const SizedBox(height: 28),
-                const Divider(),
-                const SizedBox(height: 16),
-                const Text(
-                  'سجل الحضور العام',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 12),
-                if (records.isEmpty)
-                  const Text('لا يوجد عمليات حضور بعد.')
-                else
-                  ...records.take(30).map((record) {
-                    final typeText = record.isCheckIn ? 'دخول' : 'خروج';
-                    return Card(
-                      child: ListTile(
-                        leading: Icon(record.isCheckIn ? Icons.login : Icons.logout),
-                        title: Text('${record.studentName} - $typeText'),
-                        subtitle: Text('الوقت: ${_formatTime(record.timestamp)}'),
-                      ),
-                    );
-                  }),
-              ],
+              ),
+              body: const TabBarView(
+                children: [
+                  AdminDashboardSection(),
+                  _ReportTab(),
+                  _StudentsTab(),
+                  _UsersTab(),
+                  _AttendanceLogTab(),
+                ],
+              ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }
 
-class _StatCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final IconData icon;
-
-  const _StatCard({required this.title, required this.value, required this.icon});
+class _ReportTab extends StatelessWidget {
+  const _ReportTab();
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon),
-            const SizedBox(height: 12),
-            Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            Text(title),
-          ],
+    return const ListView(
+      padding: EdgeInsets.all(16),
+      children: [DailyAttendanceReportSection()],
+    );
+  }
+}
+
+class _StudentsTab extends StatelessWidget {
+  const _StudentsTab();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ListView(
+      padding: EdgeInsets.all(16),
+      children: [AdminStudentsSection()],
+    );
+  }
+}
+
+class _UsersTab extends StatelessWidget {
+  const _UsersTab();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ListView(
+      padding: EdgeInsets.all(16),
+      children: [AdminUsersSection()],
+    );
+  }
+}
+
+class _AttendanceLogTab extends StatelessWidget {
+  const _AttendanceLogTab();
+
+  String _formatTime(DateTime dateTime) {
+    final hour = dateTime.hour.toString().padLeft(2, '0');
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    final day = dateTime.day.toString().padLeft(2, '0');
+    final month = dateTime.month.toString().padLeft(2, '0');
+    return '$hour:$minute - $day/$month';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final records = MockDatabase.attendanceRecords;
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const Text(
+          'سجل الحضور العام',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
-      ),
+        const SizedBox(height: 8),
+        const Text('آخر 100 حركة دخول وخروج.'),
+        const SizedBox(height: 14),
+        if (records.isEmpty)
+          const Card(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('لا يوجد عمليات حضور بعد.'),
+            ),
+          )
+        else
+          ...records.take(100).map((record) {
+            final typeText = record.isCheckIn ? 'دخول' : 'خروج';
+            final color = record.isCheckIn ? Colors.green : Colors.red;
+
+            return Card(
+              child: ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: color.withOpacity(0.10),
+                  child: Icon(
+                    record.isCheckIn ? Icons.login : Icons.logout,
+                    color: color,
+                  ),
+                ),
+                title: Text('${record.studentName} - $typeText'),
+                subtitle: Text('الوقت: ${_formatTime(record.timestamp)}'),
+              ),
+            );
+          }),
+      ],
     );
   }
 }
