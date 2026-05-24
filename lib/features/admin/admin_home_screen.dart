@@ -427,9 +427,9 @@ class _ReportTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ListView(
-      padding: EdgeInsets.all(16),
-      children: [DailyAttendanceReportSection()],
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: const [DailyAttendanceReportSection()],
     );
   }
 }
@@ -439,9 +439,9 @@ class _StudentsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ListView(
-      padding: EdgeInsets.all(16),
-      children: [AdminStudentsSection()],
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: const [AdminStudentsSection()],
     );
   }
 }
@@ -451,9 +451,9 @@ class _UsersTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ListView(
-      padding: EdgeInsets.all(16),
-      children: [AdminUsersSection()],
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: const [AdminUsersSection()],
     );
   }
 }
