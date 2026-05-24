@@ -31,11 +31,76 @@ class MockDatabase {
     return student;
   }
 
+  static Student? findStudentByNfcUid(String nfcUid) {
+    final normalizedUid = _normalizeNfcUid(nfcUid);
+
+    if (normalizedUid.isEmpty) return null;
+
+    for (final student in students) {
+      if (_normalizeNfcUid(student.nfcUid ?? '') == normalizedUid) {
+        return student;
+      }
+    }
+
+    return null;
+  }
+
+  static bool isNfcUidAlreadyLinked(String nfcUid, {String? exceptStudentId}) {
+    final normalizedUid = _normalizeNfcUid(nfcUid);
+
+    if (normalizedUid.isEmpty) return false;
+
+    return students.any((student) {
+      final sameUid = _normalizeNfcUid(student.nfcUid ?? '') == normalizedUid;
+      final sameStudent = student.id == exceptStudentId;
+      return sameUid && !sameStudent;
+    });
+  }
+
+  static Student? linkNfcUidToStudent({
+    required String studentId,
+    required String nfcUid,
+  }) {
+    final index = students.indexWhere((student) => student.id == studentId);
+
+    if (index == -1) return null;
+
+    final normalizedUid = _normalizeNfcUid(nfcUid);
+
+    if (normalizedUid.isEmpty) return null;
+
+    if (isNfcUidAlreadyLinked(normalizedUid, exceptStudentId: studentId)) {
+      return null;
+    }
+
+    final updatedStudent = students[index].copyWith(nfcUid: normalizedUid);
+    students[index] = updatedStudent;
+    return updatedStudent;
+  }
+
   static AttendanceRecord? toggleStudentAttendance(String studentId) {
     final index = students.indexWhere((student) => student.id == studentId);
 
     if (index == -1) return null;
 
+    return _toggleStudentAttendanceByIndex(index);
+  }
+
+  static AttendanceRecord? toggleStudentAttendanceByNfcUid(String nfcUid) {
+    final normalizedUid = _normalizeNfcUid(nfcUid);
+
+    if (normalizedUid.isEmpty) return null;
+
+    final index = students.indexWhere(
+      (student) => _normalizeNfcUid(student.nfcUid ?? '') == normalizedUid,
+    );
+
+    if (index == -1) return null;
+
+    return _toggleStudentAttendanceByIndex(index);
+  }
+
+  static AttendanceRecord _toggleStudentAttendanceByIndex(int index) {
     final student = students[index];
     final now = DateTime.now();
     final newStatus = !student.isInsideSchool;
@@ -56,5 +121,9 @@ class MockDatabase {
 
     attendanceRecords.insert(0, record);
     return record;
+  }
+
+  static String _normalizeNfcUid(String value) {
+    return value.trim().replaceAll(' ', '').toUpperCase();
   }
 }
