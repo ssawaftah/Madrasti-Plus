@@ -50,6 +50,74 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     ).showSnackBar(const SnackBar(content: Text('تمت إضافة الطالب بنجاح')));
   }
 
+  void _showLinkNfcDialog(String studentId, String studentName) {
+    final controller = TextEditingController();
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            title: Text('ربط بطاقة NFC - $studentName'),
+            content: TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'NFC UID',
+                hintText: 'مثال: 04A1B2C3D4',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('إلغاء'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final uid = controller.text.trim();
+
+                  if (uid.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('أدخل UID أولًا')),
+                    );
+                    return;
+                  }
+
+                  if (MockDatabase.isNfcUidAlreadyLinked(
+                    uid,
+                    exceptStudentId: studentId,
+                  )) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('هذا UID مربوط بطالب آخر بالفعل'),
+                      ),
+                    );
+                    return;
+                  }
+
+                  setState(() {
+                    MockDatabase.linkNfcUidToStudent(
+                      studentId: studentId,
+                      nfcUid: uid,
+                    );
+                  });
+
+                  Navigator.of(dialogContext).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('تم ربط بطاقة NFC بنجاح')),
+                  );
+                },
+                child: const Text('حفظ'),
+              ),
+            ],
+          ),
+        );
+      },
+    ).whenComplete(controller.dispose);
+  }
+
   String _formatTime(DateTime dateTime) {
     final hour = dateTime.hour.toString().padLeft(2, '0');
     final minute = dateTime.minute.toString().padLeft(2, '0');
@@ -173,6 +241,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                   final lastScanText = student.lastAttendanceAt == null
                       ? 'لا يوجد تسجيل بعد'
                       : 'آخر تسجيل: ${_formatTime(student.lastAttendanceAt!)}';
+                  final uidText = student.nfcUid == null
+                      ? 'لا يوجد UID مرتبط'
+                      : 'UID: ${student.nfcUid}';
 
                   return Card(
                     child: ListTile(
@@ -183,9 +254,17 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                       ),
                       title: Text(student.fullName),
                       subtitle: Text(
-                        'الصف: ${student.grade} - الشعبة: ${student.section}\nالحالة: $statusText\n$lastScanText',
+                        'الصف: ${student.grade} - الشعبة: ${student.section}\nالحالة: $statusText\n$uidText\n$lastScanText',
                       ),
                       isThreeLine: true,
+                      trailing: IconButton(
+                        tooltip: 'ربط NFC',
+                        icon: const Icon(Icons.nfc),
+                        onPressed: () => _showLinkNfcDialog(
+                          student.id,
+                          student.fullName,
+                        ),
+                      ),
                     ),
                   );
                 },
