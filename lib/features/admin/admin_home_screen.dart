@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:nfc_manager/nfc_manager.dart';
 
 import '../../core/data/mock_database.dart';
+import '../../core/services/auth_service.dart';
 import '../../core/services/nfc_uid_reader.dart';
+import 'widgets/admin_users_section.dart';
 import 'widgets/firebase_sync_button.dart';
 
 class AdminHomeScreen extends StatefulWidget {
@@ -266,7 +268,17 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(title: const Text('الإدارة'), centerTitle: true),
+        appBar: AppBar(
+          title: const Text('الإدارة'),
+          centerTitle: true,
+          actions: [
+            IconButton(
+              tooltip: 'تسجيل الخروج',
+              onPressed: () => AuthService().signOut(),
+              icon: const Icon(Icons.logout),
+            ),
+          ],
+        ),
         body: ListView(
           padding: const EdgeInsets.all(16),
           children: [
@@ -309,6 +321,10 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             ),
             const SizedBox(height: 12),
             const FirebaseSyncButton(),
+            const SizedBox(height: 28),
+            const Divider(),
+            const SizedBox(height: 16),
+            const AdminUsersSection(),
             const SizedBox(height: 28),
             const Divider(),
             const SizedBox(height: 16),
