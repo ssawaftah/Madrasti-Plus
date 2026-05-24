@@ -97,6 +97,55 @@ class MockDatabase {
     return student;
   }
 
+  static Student? updateStudent({
+    required String studentId,
+    required String fullName,
+    required String grade,
+    required String section,
+  }) {
+    final index = students.indexWhere((student) => student.id == studentId);
+
+    if (index == -1) return null;
+
+    final updatedStudent = students[index].copyWith(
+      fullName: fullName,
+      grade: grade,
+      section: section,
+    );
+
+    students[index] = updatedStudent;
+    _save();
+    _notifyChanged();
+    FirebaseSyncService.syncStudent(updatedStudent);
+    return updatedStudent;
+  }
+
+  static Student? clearStudentNfcUid(String studentId) {
+    final index = students.indexWhere((student) => student.id == studentId);
+
+    if (index == -1) return null;
+
+    final updatedStudent = students[index].copyWith(nfcUid: null);
+    students[index] = updatedStudent;
+    _save();
+    _notifyChanged();
+    FirebaseSyncService.syncStudent(updatedStudent);
+    return updatedStudent;
+  }
+
+  static Future<void> deleteStudent(String studentId) async {
+    students.removeWhere((student) => student.id == studentId);
+    _save();
+    _notifyChanged();
+
+    try {
+      await FirestoreDatabaseService().deleteStudent(studentId);
+    } catch (error, stackTrace) {
+      debugPrint('Failed to delete student from Firebase: $error');
+      debugPrintStack(stackTrace: stackTrace);
+    }
+  }
+
   static Student? findStudentByNfcUid(String nfcUid) {
     final normalizedUid = _normalizeNfcUid(nfcUid);
 
