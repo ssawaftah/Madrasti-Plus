@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -16,6 +17,10 @@ class MockDatabase {
 
   static final List<Student> students = [];
   static final List<AttendanceRecord> attendanceRecords = [];
+  static final ValueNotifier<int> revision = ValueNotifier<int>(0);
+
+  static StreamSubscription<List<Student>>? _studentsSubscription;
+  static StreamSubscription<List<AttendanceRecord>>? _attendanceSubscription;
 
   static int get insideSchoolCount {
     return students.where((student) => student.isInsideSchool).length;
@@ -28,6 +33,49 @@ class MockDatabase {
   static Future<void> initialize() async {
     await _loadFromLocalStorage();
     await _loadFromFirestoreIfAvailable();
+    startRealtimeSync();
+  }
+
+  static void startRealtimeSync() {
+    _studentsSubscription?.cancel();
+    _attendanceSubscription?.cancel();
+
+    final firestoreService = FirestoreDatabaseService();
+
+    _studentsSubscription = firestoreService.watchStudents().listen(
+      (remoteStudents) {
+        students
+          ..clear()
+          ..addAll(remoteStudents);
+        _save();
+        _notifyChanged();
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        debugPrint('Failed to listen to Firestore students: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      },
+    );
+
+    _attendanceSubscription = firestoreService.watchAttendanceRecords().listen(
+      (remoteAttendanceRecords) {
+        attendanceRecords
+          ..clear()
+          ..addAll(remoteAttendanceRecords);
+        _save();
+        _notifyChanged();
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        debugPrint('Failed to listen to Firestore attendance records: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      },
+    );
+  }
+
+  static Future<void> stopRealtimeSync() async {
+    await _studentsSubscription?.cancel();
+    await _attendanceSubscription?.cancel();
+    _studentsSubscription = null;
+    _attendanceSubscription = null;
   }
 
   static Student addStudent({
@@ -44,6 +92,7 @@ class MockDatabase {
 
     students.add(student);
     _save();
+    _notifyChanged();
     FirebaseSyncService.syncStudent(student);
     return student;
   }
@@ -93,6 +142,7 @@ class MockDatabase {
     final updatedStudent = students[index].copyWith(nfcUid: normalizedUid);
     students[index] = updatedStudent;
     _save();
+    _notifyChanged();
     FirebaseSyncService.syncStudent(updatedStudent);
     return updatedStudent;
   }
@@ -142,6 +192,7 @@ class MockDatabase {
 
     attendanceRecords.insert(0, record);
     _save();
+    _notifyChanged();
     FirebaseSyncService.syncAttendanceRecord(
       record: record,
       student: updatedStudent,
@@ -152,6 +203,7 @@ class MockDatabase {
   static Future<void> clearAll() async {
     students.clear();
     attendanceRecords.clear();
+    _notifyChanged();
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_studentsKey);
@@ -170,6 +222,8 @@ class MockDatabase {
     attendanceRecords
       ..clear()
       ..addAll(_decodeAttendanceRecords(attendanceRecordsJson));
+
+    _notifyChanged();
   }
 
   static Future<void> _loadFromFirestoreIfAvailable() async {
@@ -197,6 +251,7 @@ class MockDatabase {
         ..addAll(remoteAttendanceRecords);
 
       await _save();
+      _notifyChanged();
       debugPrint(
         'Loaded ${students.length} students and ${attendanceRecords.length} attendance records from Firestore.',
       );
@@ -204,6 +259,10 @@ class MockDatabase {
       debugPrint('Failed to load data from Firestore, using local data: $error');
       debugPrintStack(stackTrace: stackTrace);
     }
+  }
+
+  static void _notifyChanged() {
+    revision.value++;
   }
 
   static List<Student> _decodeStudents(String? value) {
