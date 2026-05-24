@@ -23,6 +23,25 @@ class AuthService {
 
   User? get currentFirebaseUser => _firebaseAuth.currentUser;
 
+  Stream<AppUser?> watchCurrentAppUser() {
+    final firebaseUser = _firebaseAuth.currentUser;
+
+    if (firebaseUser == null) {
+      return Stream<AppUser?>.value(null);
+    }
+
+    return _firestore.collection('users').doc(firebaseUser.uid).snapshots().map(
+      (snapshot) {
+        if (!snapshot.exists || snapshot.data() == null) return null;
+
+        return AppUser.fromJson({
+          ...snapshot.data()!,
+          'id': snapshot.id,
+        });
+      },
+    );
+  }
+
   Future<UserCredential> signIn({
     required String email,
     required String password,
