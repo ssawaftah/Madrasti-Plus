@@ -47,7 +47,7 @@ class AdminUsersSection extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             const Text(
-              'غيّر دور الحسابات واربط أولياء الأمور بالطلاب.',
+              'غيّر دور الحسابات واربط أولياء الأمور بالطلاب وعيّن صفوف المعلمين.',
               style: TextStyle(fontSize: 15),
             ),
             const SizedBox(height: 12),
@@ -101,6 +101,23 @@ class AdminUsersSection extends StatelessWidget {
                               user.linkedStudentIds.isEmpty
                                   ? 'ربط ولي الأمر بطلاب'
                                   : 'الطلاب المرتبطون: ${user.linkedStudentIds.length}',
+                            ),
+                          ),
+                        ],
+                        if (user.role == 'teacher') ...[
+                          const SizedBox(height: 12),
+                          OutlinedButton.icon(
+                            onPressed: () => _showTeacherAssignmentsDialog(
+                              context: context,
+                              user: user,
+                              service: service,
+                            ),
+                            icon: const Icon(Icons.class_),
+                            label: Text(
+                              user.assignedGrades.isEmpty &&
+                                      user.assignedSections.isEmpty
+                                  ? 'تعيين الصفوف والشعب'
+                                  : 'الصفوف: ${user.assignedGrades.length} | الشعب: ${user.assignedSections.length}',
                             ),
                           ),
                         ],
@@ -167,6 +184,112 @@ class AdminUsersSection extends StatelessWidget {
                       await service.updateLinkedStudentIds(
                         userId: user.id,
                         linkedStudentIds: selectedIds.toList(),
+                      );
+                      if (dialogContext.mounted) {
+                        Navigator.of(dialogContext).pop();
+                      }
+                    },
+                    child: const Text('حفظ'),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showTeacherAssignmentsDialog({
+    required BuildContext context,
+    required AppUser user,
+    required UserManagementService service,
+  }) {
+    final selectedGrades = user.assignedGrades.toSet();
+    final selectedSections = user.assignedSections.toSet();
+    final grades = MockDatabase.students.map((student) => student.grade).toSet().toList()
+      ..sort();
+    final sections = MockDatabase.students.map((student) => student.section).toSet().toList()
+      ..sort();
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Directionality(
+              textDirection: TextDirection.rtl,
+              child: AlertDialog(
+                title: Text('تعيين المعلم - ${user.email}'),
+                content: SizedBox(
+                  width: double.maxFinite,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'الصفوف المسموحة',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        if (grades.isEmpty)
+                          const Text('لا توجد صفوف بعد. أضف طلابًا أولًا.')
+                        else
+                          ...grades.map((grade) {
+                            return CheckboxListTile(
+                              value: selectedGrades.contains(grade),
+                              title: Text(grade),
+                              onChanged: (value) {
+                                setDialogState(() {
+                                  if (value == true) {
+                                    selectedGrades.add(grade);
+                                  } else {
+                                    selectedGrades.remove(grade);
+                                  }
+                                });
+                              },
+                            );
+                          }),
+                        const Divider(height: 24),
+                        const Text(
+                          'الشُعب المسموحة',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        if (sections.isEmpty)
+                          const Text('لا توجد شعب بعد. أضف طلابًا أولًا.')
+                        else
+                          ...sections.map((section) {
+                            return CheckboxListTile(
+                              value: selectedSections.contains(section),
+                              title: Text(section),
+                              onChanged: (value) {
+                                setDialogState(() {
+                                  if (value == true) {
+                                    selectedSections.add(section);
+                                  } else {
+                                    selectedSections.remove(section);
+                                  }
+                                });
+                              },
+                            );
+                          }),
+                      ],
+                    ),
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: const Text('إلغاء'),
+                  ),
+                  FilledButton(
+                    onPressed: () async {
+                      await service.updateTeacherAssignments(
+                        userId: user.id,
+                        assignedGrades: selectedGrades.toList()..sort(),
+                        assignedSections: selectedSections.toList()..sort(),
                       );
                       if (dialogContext.mounted) {
                         Navigator.of(dialogContext).pop();
