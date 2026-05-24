@@ -75,9 +75,7 @@ class _GateHomeScreenState extends State<GateHomeScreen> {
         if (!mounted) return;
 
         if (uid == null || uid.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('تمت قراءة البطاقة لكن لم أستطع استخراج UID')),
-          );
+          _showNfcDebugDialog(tag.data);
           return;
         }
 
@@ -127,30 +125,68 @@ class _GateHomeScreenState extends State<GateHomeScreen> {
 
     if (tagData is! Map) return null;
 
-    final data = Map<String, dynamic>.from(tagData);
-    final candidates = <dynamic>[
-      _identifierFromTechnology(data['nfca']),
-      _identifierFromTechnology(data['mifareclassic']),
-      _identifierFromTechnology(data['mifareultralight']),
-      _identifierFromTechnology(data['ndef']),
-      _identifierFromTechnology(data['iso7816']),
-      _identifierFromTechnology(data['iso15693']),
-    ];
+    final uid = _findUidCandidate(tagData);
+    return uid == null || uid.isEmpty ? null : uid;
+  }
 
-    for (final candidate in candidates) {
-      final uid = _bytesToHex(candidate);
-      if (uid != null && uid.isNotEmpty) return uid;
+  String? _findUidCandidate(dynamic value) {
+    if (value == null) return null;
+
+    final directHex = _bytesToHex(value);
+    if (_looksLikeUid(directHex)) return directHex;
+
+    if (value is Map) {
+      const preferredKeys = [
+        'identifier',
+        'id',
+        'uid',
+        'serialNumber',
+        'tagId',
+        'manufacturerId',
+      ];
+
+      for (final key in preferredKeys) {
+        if (value.containsKey(key)) {
+          final uid = _findUidCandidate(value[key]);
+          if (_looksLikeUid(uid)) return uid;
+        }
+      }
+
+      for (final entry in value.entries) {
+        final key = entry.key.toString().toLowerCase();
+        final isLikelyUidKey = key.contains('identifier') ||
+            key == 'id' ||
+            key.contains('uid') ||
+            key.contains('serial') ||
+            key.contains('tagid');
+
+        if (!isLikelyUidKey) continue;
+
+        final uid = _findUidCandidate(entry.value);
+        if (_looksLikeUid(uid)) return uid;
+      }
+
+      for (final entry in value.entries) {
+        final uid = _findUidCandidate(entry.value);
+        if (_looksLikeUid(uid)) return uid;
+      }
+    }
+
+    if (value is List) {
+      for (final item in value) {
+        final uid = _findUidCandidate(item);
+        if (_looksLikeUid(uid)) return uid;
+      }
     }
 
     return null;
   }
 
-  dynamic _identifierFromTechnology(dynamic technologyData) {
-    if (technologyData is Map) {
-      return technologyData['identifier'];
-    }
+  bool _looksLikeUid(String? value) {
+    if (value == null || value.isEmpty) return false;
 
-    return null;
+    final normalized = value.replaceAll(RegExp(r'[^A-Fa-f0-9]'), '');
+    return normalized.length >= 8 && normalized.length <= 20;
   }
 
   String? _bytesToHex(dynamic value) {
@@ -164,6 +200,11 @@ class _GateHomeScreenState extends State<GateHomeScreen> {
       bytes = value;
     } else if (value is List) {
       bytes = value.whereType<int>().toList();
+    } else if (value is String) {
+      final normalized = value.replaceAll(RegExp(r'[^A-Fa-f0-9]'), '');
+      if (normalized.length >= 8 && normalized.length.isEven) {
+        return normalized.toUpperCase();
+      }
     }
 
     if (bytes == null || bytes.isEmpty) return null;
@@ -172,6 +213,40 @@ class _GateHomeScreenState extends State<GateHomeScreen> {
         .map((byte) => byte.toRadixString(16).padLeft(2, '0'))
         .join()
         .toUpperCase();
+  }
+
+  void _showNfcDebugDialog(Object? rawData) {
+    final rawText = rawData.toString();
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            title: const Text('تمت قراءة البطاقة بدون UID واضح'),
+            content: SingleChildScrollView(
+              child: SelectableText(
+                rawText,
+                textDirection: TextDirection.ltr,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('إغلاق'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('انسخ بيانات البطاقة من النافذة وأرسلها لي لو لم يظهر UID'),
+      ),
+    );
   }
 
   void _showScanResult(dynamic record) {
