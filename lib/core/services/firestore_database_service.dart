@@ -42,6 +42,32 @@ class FirestoreDatabaseService {
     );
   }
 
+  Stream<List<Student>> watchStudents() {
+    return _studentsCollection.orderBy('fullName').snapshots().map((snapshot) {
+      return snapshot.docs.map((doc) {
+        return Student.fromJson({
+          ...doc.data(),
+          'id': doc.id,
+        });
+      }).toList();
+    });
+  }
+
+  Stream<List<AttendanceRecord>> watchAttendanceRecords() {
+    return _attendanceRecordsCollection
+        .orderBy('timestamp', descending: true)
+        .limit(200)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        return AttendanceRecord.fromJson({
+          ...doc.data(),
+          'id': doc.id,
+        });
+      }).toList();
+    });
+  }
+
   Future<List<Student>> fetchStudents() async {
     final snapshot = await _studentsCollection.orderBy('fullName').get();
 
