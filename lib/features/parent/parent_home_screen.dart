@@ -53,56 +53,64 @@ class ParentHomeScreen extends StatelessWidget {
               );
             }
 
-            final linkedStudents = MockDatabase.students
-                .where((student) => appUser.linkedStudentIds.contains(student.id))
-                .toList();
+            return ValueListenableBuilder<int>(
+              valueListenable: MockDatabase.revision,
+              builder: (context, _, __) {
+                final linkedStudents = MockDatabase.students
+                    .where(
+                      (student) => appUser.linkedStudentIds.contains(student.id),
+                    )
+                    .toList();
 
-            if (linkedStudents.isEmpty) {
-              return const _EmptyState(
-                icon: Icons.family_restroom,
-                title: 'لم يتم ربط طلاب بعد',
-                message:
-                    'اطلب من الإدارة ربط حسابك بطلابك من لوحة المستخدمين والصلاحيات.',
-              );
-            }
+                if (linkedStudents.isEmpty) {
+                  return const _EmptyState(
+                    icon: Icons.family_restroom,
+                    title: 'لم يتم ربط طلاب بعد',
+                    message:
+                        'اطلب من الإدارة ربط حسابك بطلابك من لوحة المستخدمين والصلاحيات.',
+                  );
+                }
 
-            return RefreshIndicator(
-              onRefresh: () async {
-                await Future<void>.delayed(const Duration(milliseconds: 350));
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    MockDatabase.startRealtimeSync();
+                    await Future<void>.delayed(const Duration(milliseconds: 350));
+                  },
+                  child: ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      _HeaderCard(
+                        parentName: appUser.fullName,
+                        childrenCount: linkedStudents.length,
+                      ),
+                      const SizedBox(height: 18),
+                      const Text(
+                        'أبنائي',
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 12),
+                      ...linkedStudents.map((student) {
+                        final records = _recordsForStudent(student.id);
+                        return _StudentStatusCard(
+                          student: student,
+                          records: records,
+                        );
+                      }),
+                      const SizedBox(height: 18),
+                      const Text(
+                        'آخر الحركات',
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 12),
+                      _RecentActivityList(
+                        records: _recordsForStudents(
+                          linkedStudents.map((student) => student.id).toSet(),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
               },
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  _HeaderCard(
-                    parentName: appUser.fullName,
-                    childrenCount: linkedStudents.length,
-                  ),
-                  const SizedBox(height: 18),
-                  const Text(
-                    'أبنائي',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  ...linkedStudents.map((student) {
-                    final records = _recordsForStudent(student.id);
-                    return _StudentStatusCard(
-                      student: student,
-                      records: records,
-                    );
-                  }),
-                  const SizedBox(height: 18),
-                  const Text(
-                    'آخر الحركات',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  _RecentActivityList(
-                    records: _recordsForStudents(
-                      linkedStudents.map((student) => student.id).toSet(),
-                    ),
-                  ),
-                ],
-              ),
             );
           },
         ),
