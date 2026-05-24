@@ -44,6 +44,7 @@ class SuperAdminService {
 
   Future<School> createSchool({
     required String name,
+    required String code,
     required String address,
     required String managerName,
     required String email,
@@ -51,7 +52,19 @@ class SuperAdminService {
   }) async {
     final normalizedEmail = email.trim().toLowerCase();
     final schoolDoc = _schoolsCollection.doc();
-    final schoolCode = _generateSchoolCode(name, schoolDoc.id);
+    final requestedCode = code.trim().toUpperCase();
+    final schoolCode = requestedCode.isEmpty
+        ? _generateSchoolCode(name, schoolDoc.id)
+        : requestedCode;
+
+    final existingCode = await _schoolsCollection
+        .where('code', isEqualTo: schoolCode)
+        .limit(1)
+        .get();
+
+    if (existingCode.docs.isNotEmpty) {
+      throw StateError('رمز الشركة/المدرسة مستخدم بالفعل');
+    }
 
     final secondaryAppName = 'school_creator_${DateTime.now().microsecondsSinceEpoch}';
     final secondaryApp = await Firebase.initializeApp(
@@ -110,7 +123,9 @@ class SuperAdminService {
         .trim()
         .toUpperCase()
         .replaceAll(RegExp(r'[^A-Z0-9]'), '');
-    final prefix = cleaned.isEmpty ? 'SCH' : cleaned.substring(0, cleaned.length < 3 ? cleaned.length : 3);
+    final prefix = cleaned.isEmpty
+        ? 'SCH'
+        : cleaned.substring(0, cleaned.length < 3 ? cleaned.length : 3);
     final suffix = schoolId.substring(0, 5).toUpperCase();
     return '$prefix-$suffix';
   }
