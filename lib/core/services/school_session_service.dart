@@ -1,14 +1,13 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../config/firebase_config.dart';
-
 class SchoolSessionService {
   SchoolSessionService._();
 
+  static const fallbackSchoolId = 'school_001';
   static const _schoolIdKey = 'active_school_id';
   static const _schoolCodeKey = 'active_school_code';
 
-  static String _activeSchoolId = FirebaseConfig.defaultSchoolId;
+  static String _activeSchoolId = fallbackSchoolId;
   static String _activeSchoolCode = '';
 
   static String get activeSchoolId => _activeSchoolId;
@@ -16,7 +15,7 @@ class SchoolSessionService {
 
   static Future<void> initialize() async {
     final prefs = await SharedPreferences.getInstance();
-    _activeSchoolId = prefs.getString(_schoolIdKey) ?? FirebaseConfig.defaultSchoolId;
+    _activeSchoolId = prefs.getString(_schoolIdKey) ?? fallbackSchoolId;
     _activeSchoolCode = prefs.getString(_schoolCodeKey) ?? '';
   }
 
@@ -33,7 +32,7 @@ class SchoolSessionService {
   }
 
   static Future<void> clear() async {
-    _activeSchoolId = FirebaseConfig.defaultSchoolId;
+    _activeSchoolId = fallbackSchoolId;
     _activeSchoolCode = '';
 
     final prefs = await SharedPreferences.getInstance();
