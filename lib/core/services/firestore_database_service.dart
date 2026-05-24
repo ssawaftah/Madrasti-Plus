@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 import '../config/firebase_config.dart';
 import '../models/attendance_record.dart';
@@ -8,7 +9,11 @@ class FirestoreDatabaseService {
   FirestoreDatabaseService({
     FirebaseFirestore? firestore,
     String? schoolId,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
+  })  : _firestore = firestore ??
+            FirebaseFirestore.instanceFor(
+              app: Firebase.app(),
+              databaseId: FirebaseConfig.firestoreDatabaseId,
+            ),
         _schoolId = schoolId ?? FirebaseConfig.defaultSchoolId;
 
   final FirebaseFirestore _firestore;
@@ -97,6 +102,22 @@ class FirestoreDatabaseService {
       );
     }
 
-    await batch.commit();
+    await batch.commit().timeout(
+      const Duration(seconds: 15),
+      onTimeout: () {
+        throw TimeoutException(
+          'انتهت مهلة الاتصال مع Firestore. تأكد من وجود قاعدة البيانات وصلاحيات الكتابة.',
+        );
+      },
+    );
   }
+}
+
+class TimeoutException implements Exception {
+  final String message;
+
+  const TimeoutException(this.message);
+
+  @override
+  String toString() => message;
 }
