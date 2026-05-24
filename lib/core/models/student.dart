@@ -48,18 +48,22 @@ class Student {
     String? fullName,
     String? grade,
     String? section,
-    String? nfcUid,
+    Object? nfcUid = _sentinel,
     bool? isInsideSchool,
-    DateTime? lastAttendanceAt,
+    Object? lastAttendanceAt = _sentinel,
   }) {
     return Student(
       id: id ?? this.id,
       fullName: fullName ?? this.fullName,
       grade: grade ?? this.grade,
       section: section ?? this.section,
-      nfcUid: nfcUid ?? this.nfcUid,
+      nfcUid: identical(nfcUid, _sentinel) ? this.nfcUid : nfcUid as String?,
       isInsideSchool: isInsideSchool ?? this.isInsideSchool,
-      lastAttendanceAt: lastAttendanceAt ?? this.lastAttendanceAt,
+      lastAttendanceAt: identical(lastAttendanceAt, _sentinel)
+          ? this.lastAttendanceAt
+          : lastAttendanceAt as DateTime?,
     );
   }
 }
+
+const Object _sentinel = Object();
