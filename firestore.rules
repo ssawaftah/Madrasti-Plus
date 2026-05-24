@@ -1,0 +1,152 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function hasUserDoc() {
+      return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function role() {
+      return hasUserDoc() ? userDoc().data.role : null;
+    }
+
+    function schoolId() {
+      return hasUserDoc() ? userDoc().data.schoolId : null;
+    }
+
+    function isAdmin() {
+      return role() == 'admin';
+    }
+
+    function isTeacher() {
+      return role() == 'teacher';
+    }
+
+    function isParent() {
+      return role() == 'parent';
+    }
+
+    function isNfcDevice() {
+      return role() == 'nfc_device';
+    }
+
+    function isSameSchool(targetSchoolId) {
+      return signedIn() && schoolId() == targetSchoolId;
+    }
+
+    function linkedStudentIds() {
+      return hasUserDoc() && userDoc().data.linkedStudentIds is list
+        ? userDoc().data.linkedStudentIds
+        : [];
+    }
+
+    function parentLinkedToStudent(studentId) {
+      return isParent() && studentId in linkedStudentIds();
+    }
+
+    function allowedUserRoles() {
+      return ['admin', 'teacher', 'parent', 'nfc_device'];
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn() && (
+        isAdmin() || request.auth.uid == userId
+      );
+
+      allow create: if signedIn() && (
+        isAdmin() || (
+          request.auth.uid == userId &&
+          request.resource.data.role == 'parent' &&
+          request.resource.data.schoolId is string &&
+          request.resource.data.email is string &&
+          request.resource.data.fullName is string &&
+          request.resource.data.linkedStudentIds is list
+        )
+      );
+
+      allow update: if signedIn() && (
+        isAdmin() || (
+          request.auth.uid == userId &&
+          request.resource.data.diff(resource.data).changedKeys()
+            .hasOnly(['fcmTokens', 'lastFcmTokenUpdatedAt'])
+        )
+      );
+
+      allow delete: if signedIn() && isAdmin() && request.auth.uid != userId;
+    }
+
+    match /schools/{schoolId} {
+      allow read: if signedIn() && isSameSchool(schoolId);
+      allow create, update, delete: if signedIn() && isAdmin() && isSameSchool(schoolId);
+
+      match /students/{studentId} {
+        allow read: if signedIn() && isSameSchool(schoolId) && (
+          isAdmin() ||
+          isTeacher() ||
+          isNfcDevice() ||
+          parentLinkedToStudent(studentId)
+        );
+
+        allow create, update, delete: if signedIn() && isAdmin() && isSameSchool(schoolId);
+      }
+
+      match /attendance_records/{recordId} {
+        allow read: if signedIn() && isSameSchool(schoolId) && (
+          isAdmin() ||
+          isTeacher() ||
+          isNfcDevice() ||
+          parentLinkedToStudent(resource.data.studentId)
+        );
+
+        allow create: if signedIn() && isSameSchool(schoolId) && (
+          isAdmin() || isNfcDevice()
+        ) &&
+          request.resource.data.studentId is string &&
+          request.resource.data.studentName is string &&
+          request.resource.data.type in ['check_in', 'check_out'] &&
+          request.resource.data.timestamp is string;
+
+        allow update, delete: if signedIn() && isAdmin() && isSameSchool(schoolId);
+      }
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if signedIn() && (
+        isAdmin() || resource.data.userId == request.auth.uid
+      );
+
+      allow create: if signedIn() && (
+        isAdmin() || isNfcDevice()
+      ) &&
+        request.resource.data.userId is string &&
+        request.resource.data.studentId is string &&
+        request.resource.data.studentName is string &&
+        request.resource.data.type in ['check_in', 'check_out', 'info'] &&
+        request.resource.data.title is string &&
+        request.resource.data.body is string &&
+        request.resource.data.createdAt is string &&
+        request.resource.data.isRead is bool;
+
+      allow update: if signedIn() && (
+        isAdmin() || (
+          resource.data.userId == request.auth.uid &&
+          request.resource.data.diff(resource.data).changedKeys().hasOnly(['isRead'])
+        )
+      );
+
+      allow delete: if signedIn() && isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
