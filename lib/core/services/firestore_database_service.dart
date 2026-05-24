@@ -19,15 +19,27 @@ class FirestoreDatabaseService {
   final FirebaseFirestore _firestore;
   final String _schoolId;
 
+  DocumentReference<Map<String, dynamic>> get _schoolDocument {
+    return _firestore.collection('schools').doc(_schoolId);
+  }
+
   CollectionReference<Map<String, dynamic>> get _studentsCollection {
-    return _firestore.collection('schools').doc(_schoolId).collection('students');
+    return _schoolDocument.collection('students');
   }
 
   CollectionReference<Map<String, dynamic>> get _attendanceRecordsCollection {
-    return _firestore
-        .collection('schools')
-        .doc(_schoolId)
-        .collection('attendance_records');
+    return _schoolDocument.collection('attendance_records');
+  }
+
+  Future<void> ensureSchoolDocumentExists() async {
+    await _schoolDocument.set(
+      {
+        'id': _schoolId,
+        'name': 'Madrasti Plus Demo School',
+        'updatedAt': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
   }
 
   Future<List<Student>> fetchStudents() async {
@@ -60,6 +72,8 @@ class FirestoreDatabaseService {
     required String grade,
     required String section,
   }) async {
+    await ensureSchoolDocumentExists();
+
     final docRef = _studentsCollection.doc();
     final student = Student(
       id: docRef.id,
@@ -73,10 +87,12 @@ class FirestoreDatabaseService {
   }
 
   Future<void> upsertStudent(Student student) async {
+    await ensureSchoolDocumentExists();
     await _studentsCollection.doc(student.id).set(student.toJson()..remove('id'));
   }
 
   Future<void> addAttendanceRecord(AttendanceRecord record) async {
+    await ensureSchoolDocumentExists();
     await _attendanceRecordsCollection
         .doc(record.id)
         .set(record.toJson()..remove('id'));
@@ -87,6 +103,18 @@ class FirestoreDatabaseService {
     required List<AttendanceRecord> attendanceRecords,
   }) async {
     final batch = _firestore.batch();
+
+    batch.set(
+      _schoolDocument,
+      {
+        'id': _schoolId,
+        'name': 'Madrasti Plus Demo School',
+        'updatedAt': FieldValue.serverTimestamp(),
+        'studentsCount': students.length,
+        'attendanceRecordsCount': attendanceRecords.length,
+      },
+      SetOptions(merge: true),
+    );
 
     for (final student in students) {
       batch.set(
