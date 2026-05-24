@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 
 import '../config/firebase_config.dart';
 import '../models/app_user.dart';
+import 'school_session_service.dart';
 
 class AuthService {
   AuthService({
@@ -45,14 +46,51 @@ class AuthService {
   Future<UserCredential> signIn({
     required String email,
     required String password,
-  }) {
-    return _firebaseAuth.signInWithEmailAndPassword(
+    String? schoolCode,
+  }) async {
+    final credential = await _firebaseAuth.signInWithEmailAndPassword(
       email: email.trim(),
       password: password,
     );
+
+    final user = credential.user;
+
+    if (user == null) {
+      throw StateError('تعذر تسجيل الدخول');
+    }
+
+    final appUser = await getOrCreateCurrentAppUser();
+    final normalizedSchoolCode = (schoolCode ?? '').trim().toUpperCase();
+
+    if (appUser.role == 'super_admin') {
+      await SchoolSessionService.setActiveSchool(
+        schoolId: appUser.schoolId,
+        schoolCode: appUser.schoolCode.isEmpty ? 'PLATFORM' : appUser.schoolCode,
+      );
+      return credential;
+    }
+
+    if (normalizedSchoolCode.isEmpty) {
+      await _firebaseAuth.signOut();
+      throw const SchoolCodeException('أدخل رمز المدرسة');
+    }
+
+    final userSchoolCode = appUser.schoolCode.trim().toUpperCase();
+
+    if (userSchoolCode.isEmpty || userSchoolCode != normalizedSchoolCode) {
+      await _firebaseAuth.signOut();
+      throw const SchoolCodeException('رمز المدرسة لا يطابق هذا الحساب');
+    }
+
+    await SchoolSessionService.setActiveSchool(
+      schoolId: appUser.schoolId,
+      schoolCode: appUser.schoolCode,
+    );
+    return credential;
   }
 
-  Future<void> signOut() {
+  Future<void> signOut() async {
+    await SchoolSessionService.clear();
     return _firebaseAuth.signOut();
   }
 
@@ -79,9 +117,19 @@ class AuthService {
       email: firebaseUser.email ?? '',
       role: 'admin',
       schoolId: FirebaseConfig.defaultSchoolId,
+      schoolCode: SchoolSessionService.activeSchoolCode,
     );
 
     await docRef.set(newUser.toJson());
     return newUser;
   }
+}
+
+class SchoolCodeException implements Exception {
+  final String message;
+
+  const SchoolCodeException(this.message);
+
+  @override
+  String toString() => message;
 }
