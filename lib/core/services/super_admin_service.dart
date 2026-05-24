@@ -8,15 +8,14 @@ import '../models/app_user.dart';
 import '../models/school.dart';
 
 class SuperAdminService {
-  SuperAdminService({
-    FirebaseAuth? auth,
-    FirebaseFirestore? firestore,
-  })  : _auth = auth ?? FirebaseAuth.instance,
-        _firestore = firestore ??
-            FirebaseFirestore.instanceFor(
-              app: Firebase.app(),
-              databaseId: FirebaseConfig.firestoreDatabaseId,
-            );
+  SuperAdminService({FirebaseAuth? auth, FirebaseFirestore? firestore})
+    : _auth = auth ?? FirebaseAuth.instance,
+      _firestore =
+          firestore ??
+          FirebaseFirestore.instanceFor(
+            app: Firebase.app(),
+            databaseId: FirebaseConfig.firestoreDatabaseId,
+          );
 
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
@@ -30,21 +29,19 @@ class SuperAdminService {
   }
 
   Stream<List<School>> watchSchools() {
-    return _schoolsCollection.orderBy('createdAt', descending: true).snapshots().map(
-      (snapshot) {
-        return snapshot.docs.map((doc) {
-          return School.fromJson({
-            ...doc.data(),
-            'id': doc.id,
-          });
-        }).toList();
-      },
-    );
+    return _schoolsCollection
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs.map((doc) {
+            return School.fromJson({...doc.data(), 'id': doc.id});
+          }).toList();
+        });
   }
 
   Future<School> createSchool({
     required String name,
-    required String code,
+    String code = '',
     required String address,
     required String managerName,
     required String email,
@@ -66,7 +63,8 @@ class SuperAdminService {
       throw StateError('رمز الشركة/المدرسة مستخدم بالفعل');
     }
 
-    final secondaryAppName = 'school_creator_${DateTime.now().microsecondsSinceEpoch}';
+    final secondaryAppName =
+        'school_creator_${DateTime.now().microsecondsSinceEpoch}';
     final secondaryApp = await Firebase.initializeApp(
       name: secondaryAppName,
       options: DefaultFirebaseOptions.currentPlatform,
@@ -119,10 +117,10 @@ class SuperAdminService {
   }
 
   String _generateSchoolCode(String schoolName, String schoolId) {
-    final cleaned = schoolName
-        .trim()
-        .toUpperCase()
-        .replaceAll(RegExp(r'[^A-Z0-9]'), '');
+    final cleaned = schoolName.trim().toUpperCase().replaceAll(
+      RegExp(r'[^A-Z0-9]'),
+      '',
+    );
     final prefix = cleaned.isEmpty
         ? 'SCH'
         : cleaned.substring(0, cleaned.length < 3 ? cleaned.length : 3);
