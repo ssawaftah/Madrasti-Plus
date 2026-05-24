@@ -5,8 +5,8 @@ import '../../core/data/mock_database.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/nfc_uid_reader.dart';
 import 'widgets/admin_dashboard_section.dart';
+import 'widgets/admin_school_users_section.dart';
 import 'widgets/admin_students_section.dart';
-import 'widgets/admin_users_section.dart';
 import 'widgets/daily_attendance_report_section.dart';
 
 class AdminHomeScreen extends StatefulWidget {
@@ -453,7 +453,7 @@ class _UsersTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.all(16),
-      children: const [AdminUsersSection()],
+      children: const [AdminSchoolUsersSection()],
     );
   }
 }
