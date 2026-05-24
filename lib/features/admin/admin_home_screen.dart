@@ -6,6 +6,7 @@ import '../../core/services/auth_service.dart';
 import '../../core/services/nfc_uid_reader.dart';
 import 'widgets/admin_students_section.dart';
 import 'widgets/admin_users_section.dart';
+import 'widgets/daily_attendance_report_section.dart';
 import 'widgets/firebase_sync_button.dart';
 
 class AdminHomeScreen extends StatefulWidget {
@@ -337,7 +338,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'إدارة الطلاب، المستخدمين، وربط بطاقات NFC.',
+                  'إدارة الطلاب، المستخدمين، التقارير، وربط بطاقات NFC.',
                   style: TextStyle(fontSize: 15),
                 ),
                 const SizedBox(height: 16),
@@ -358,6 +359,10 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                 ),
                 const SizedBox(height: 12),
                 const FirebaseSyncButton(),
+                const SizedBox(height: 28),
+                const Divider(),
+                const SizedBox(height: 16),
+                const DailyAttendanceReportSection(),
                 const SizedBox(height: 28),
                 const Divider(),
                 const SizedBox(height: 16),
@@ -405,7 +410,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                 if (records.isEmpty)
                   const Text('لا يوجد عمليات حضور بعد.')
                 else
-                  ...records.map((record) {
+                  ...records.take(30).map((record) {
                     final typeText = record.isCheckIn ? 'دخول' : 'خروج';
                     return Card(
                       child: ListTile(
