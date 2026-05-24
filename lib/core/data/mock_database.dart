@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/attendance_record.dart';
 import '../models/student.dart';
+import '../services/firebase_sync_service.dart';
 
 class MockDatabase {
   MockDatabase._();
@@ -50,6 +51,7 @@ class MockDatabase {
 
     students.add(student);
     _save();
+    FirebaseSyncService.syncStudent(student);
     return student;
   }
 
@@ -98,6 +100,7 @@ class MockDatabase {
     final updatedStudent = students[index].copyWith(nfcUid: normalizedUid);
     students[index] = updatedStudent;
     _save();
+    FirebaseSyncService.syncStudent(updatedStudent);
     return updatedStudent;
   }
 
@@ -129,10 +132,12 @@ class MockDatabase {
     final newStatus = !student.isInsideSchool;
     final attendanceType = newStatus ? 'check_in' : 'check_out';
 
-    students[index] = student.copyWith(
+    final updatedStudent = student.copyWith(
       isInsideSchool: newStatus,
       lastAttendanceAt: now,
     );
+
+    students[index] = updatedStudent;
 
     final record = AttendanceRecord(
       id: now.microsecondsSinceEpoch.toString(),
@@ -144,6 +149,10 @@ class MockDatabase {
 
     attendanceRecords.insert(0, record);
     _save();
+    FirebaseSyncService.syncAttendanceRecord(
+      record: record,
+      student: updatedStudent,
+    );
     return record;
   }
 
