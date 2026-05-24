@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../core/data/mock_database.dart';
+import '../../core/models/app_notification.dart';
 import '../../core/models/app_user.dart';
 import '../../core/models/attendance_record.dart';
 import '../../core/models/student.dart';
 import '../../core/services/auth_service.dart';
+import '../../core/services/notification_service.dart';
 
 class ParentHomeScreen extends StatelessWidget {
   const ParentHomeScreen({super.key});
@@ -84,6 +86,8 @@ class ParentHomeScreen extends StatelessWidget {
                         childrenCount: linkedStudents.length,
                       ),
                       const SizedBox(height: 18),
+                      _ParentNotificationsSection(userId: appUser.id),
+                      const SizedBox(height: 18),
                       const Text(
                         'أبنائي',
                         style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
@@ -130,6 +134,82 @@ class ParentHomeScreen extends StatelessWidget {
         .where((record) => studentIds.contains(record.studentId))
         .take(8)
         .toList();
+  }
+}
+
+class _ParentNotificationsSection extends StatelessWidget {
+  final String userId;
+
+  const _ParentNotificationsSection({required this.userId});
+
+  @override
+  Widget build(BuildContext context) {
+    final service = NotificationService();
+
+    return StreamBuilder<List<AppNotification>>(
+      stream: service.watchUserNotifications(userId),
+      builder: (context, snapshot) {
+        final notifications = snapshot.data ?? const <AppNotification>[];
+        final unreadCount = notifications.where((item) => !item.isRead).length;
+
+        return Card(
+          elevation: 0,
+          color: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          child: ExpansionTile(
+            initiallyExpanded: unreadCount > 0,
+            leading: CircleAvatar(
+              backgroundColor: const Color(0xFF2563EB).withOpacity(0.10),
+              child: const Icon(Icons.notifications_active, color: Color(0xFF2563EB)),
+            ),
+            title: Text(
+              unreadCount == 0 ? 'الإشعارات' : 'الإشعارات ($unreadCount جديد)',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: const Text('تنبيهات الدخول والخروج داخل التطبيق'),
+            childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            children: [
+              if (snapshot.connectionState == ConnectionState.waiting)
+                const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: CircularProgressIndicator(),
+                )
+              else if (notifications.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(14),
+                  child: Text('لا توجد إشعارات بعد.'),
+                )
+              else
+                ...notifications.take(8).map((notification) {
+                  final color = notification.type == 'check_in'
+                      ? const Color(0xFF16A34A)
+                      : const Color(0xFFDC2626);
+
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: CircleAvatar(
+                      backgroundColor: color.withOpacity(0.10),
+                      child: Icon(
+                        notification.type == 'check_in' ? Icons.login : Icons.logout,
+                        color: color,
+                      ),
+                    ),
+                    title: Text(notification.title),
+                    subtitle: Text('${notification.body}\n${_formatDateTime(notification.createdAt)}'),
+                    isThreeLine: true,
+                    trailing: notification.isRead
+                        ? const Icon(Icons.done, size: 18)
+                        : TextButton(
+                            onPressed: () => service.markAsRead(notification.id),
+                            child: const Text('تم'),
+                          ),
+                  );
+                }),
+            ],
+          ),
+        );
+      },
+    );
   }
 }
 
