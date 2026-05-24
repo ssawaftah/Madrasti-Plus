@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/models/app_user.dart';
 import '../../core/services/auth_service.dart';
+import '../../core/services/notification_service.dart';
 import '../admin/admin_home_screen.dart';
 import '../gate/gate_home_screen.dart';
 import '../parent/parent_home_screen.dart';
@@ -39,12 +40,47 @@ class AuthGate extends StatelessWidget {
             }
 
             final appUser = userSnapshot.data!;
-            return _RoleRouter(appUser: appUser);
+            return _NotificationInitializer(
+              appUser: appUser,
+              child: _RoleRouter(appUser: appUser),
+            );
           },
         );
       },
     );
   }
+}
+
+class _NotificationInitializer extends StatefulWidget {
+  final AppUser appUser;
+  final Widget child;
+
+  const _NotificationInitializer({
+    required this.appUser,
+    required this.child,
+  });
+
+  @override
+  State<_NotificationInitializer> createState() => _NotificationInitializerState();
+}
+
+class _NotificationInitializerState extends State<_NotificationInitializer> {
+  bool _initialized = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    if (_initialized) return;
+    _initialized = true;
+    await NotificationService().initializeForCurrentUser(widget.appUser.id);
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 class _RoleRouter extends StatelessWidget {
