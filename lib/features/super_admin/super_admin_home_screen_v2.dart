@@ -198,16 +198,16 @@ class _SuperAdminHomeScreenV2State extends State<SuperAdminHomeScreenV2> {
               final filteredSchools = _filterSchools(schools);
 
               return ListView(
-                padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
                 children: [
                   _TopSearchBar(
                     controller: _searchController,
                     onChanged: (_) => setState(() {}),
                     onNotificationTap: () => _showMessage('لا توجد تنبيهات جديدة'),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 22),
                   const _SectionTitle(title: 'الوصول السريع'),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
                   _QuickAccessGrid(
                     totalSchools: schools.length,
                     onAddSchoolTap: _showAddSchoolSheet,
@@ -215,13 +215,13 @@ class _SuperAdminHomeScreenV2State extends State<SuperAdminHomeScreenV2> {
                     onReportsTap: () => _showMessage('التقارير التفصيلية في الخطوة القادمة'),
                     onSubscriptionsTap: () => _showMessage('الاشتراكات قريبًا'),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 22),
                   _ToolsHeader(onCustomizeTap: () => _showMessage('التخصيص لاحقًا')),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   _PlatformStatusCard(totalSchools: schools.length),
-                  const SizedBox(height: 26),
+                  const SizedBox(height: 22),
                   const _SectionTitle(title: 'المدارس المختارة'),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   if (snapshot.connectionState == ConnectionState.waiting)
                     const Center(child: CircularProgressIndicator())
                   else if (schools.isEmpty)
@@ -230,7 +230,7 @@ class _SuperAdminHomeScreenV2State extends State<SuperAdminHomeScreenV2> {
                     const _EmptySearchCard()
                   else
                     _SelectedSchoolsStrip(schools: filteredSchools.take(6).toList()),
-                  const SizedBox(height: 80),
+                  const SizedBox(height: 70),
                 ],
               );
             },
@@ -270,12 +270,12 @@ class _TopSearchBar extends StatelessWidget {
       children: [
         IconButton(
           onPressed: onNotificationTap,
-          icon: const Icon(Icons.notifications_none_rounded, size: 34),
+          icon: const Icon(Icons.notifications_none_rounded, size: 31),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 8),
         Expanded(
           child: Container(
-            height: 58,
+            height: 54,
             decoration: BoxDecoration(
               color: const Color(0xFFF4F4F7),
               borderRadius: BorderRadius.circular(28),
@@ -285,10 +285,10 @@ class _TopSearchBar extends StatelessWidget {
               onChanged: onChanged,
               textAlign: TextAlign.right,
               decoration: const InputDecoration(
-                hintText: 'ابحث في المدارس والمؤسسات',
+                hintText: 'ابحث في المدارس والقيود...',
                 border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(horizontal: 18, vertical: 15),
-                suffixIcon: Icon(Icons.search_rounded, size: 30),
+                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                suffixIcon: Icon(Icons.search_rounded, size: 28),
               ),
             ),
           ),
@@ -309,7 +309,7 @@ class _SectionTitle extends StatelessWidget {
       title,
       textAlign: TextAlign.right,
       style: const TextStyle(
-        fontSize: 27,
+        fontSize: 25,
         fontWeight: FontWeight.w800,
         color: Color(0xFF111827),
       ),
@@ -338,40 +338,16 @@ class _QuickAccessGrid extends StatelessWidget {
       crossAxisCount: 3,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 0.95,
+      mainAxisSpacing: 10,
+      crossAxisSpacing: 10,
+      childAspectRatio: 0.82,
       children: [
-        _QuickAccessTile(
-          icon: Icons.add_business_outlined,
-          label: 'إضافة\nمدرسة',
-          onTap: onAddSchoolTap,
-        ),
-        _QuickAccessTile(
-          icon: Icons.school_outlined,
-          label: 'المدارس\n$totalSchools',
-          onTap: onSchoolsTap,
-        ),
-        _QuickAccessTile(
-          icon: Icons.admin_panel_settings_outlined,
-          label: 'إدارة\nالمدراء',
-          onTap: onSchoolsTap,
-        ),
-        _QuickAccessTile(
-          icon: Icons.analytics_outlined,
-          label: 'تقارير\nالمنصة',
-          onTap: onReportsTap,
-        ),
-        _QuickAccessTile(
-          icon: Icons.workspace_premium_outlined,
-          label: 'الاشتراكات\nوالخطط',
-          onTap: onSubscriptionsTap,
-        ),
-        _QuickAccessTile(
-          icon: Icons.security_outlined,
-          label: 'الأمان\nوالصلاحيات',
-          onTap: onReportsTap,
-        ),
+        _QuickAccessTile(icon: Icons.add_business_outlined, label: 'إضافة\nمدرسة', onTap: onAddSchoolTap),
+        _QuickAccessTile(icon: Icons.school_outlined, label: 'المدارس\n$totalSchools', onTap: onSchoolsTap),
+        _QuickAccessTile(icon: Icons.admin_panel_settings_outlined, label: 'إدارة\nالمدراء', onTap: onSchoolsTap),
+        _QuickAccessTile(icon: Icons.analytics_outlined, label: 'تقارير\nالمنصة', onTap: onReportsTap),
+        _QuickAccessTile(icon: Icons.workspace_premium_outlined, label: 'الاشتراكات\nوالخطط', onTap: onSubscriptionsTap),
+        _QuickAccessTile(icon: Icons.security_outlined, label: 'الأمان\nوالصلاحيات', onTap: onReportsTap),
       ],
     );
   }
@@ -382,11 +358,7 @@ class _QuickAccessTile extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
 
-  const _QuickAccessTile({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
+  const _QuickAccessTile({required this.icon, required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -398,20 +370,24 @@ class _QuickAccessTile extends StatelessWidget {
           color: const Color(0xFFF8F8FC),
           borderRadius: BorderRadius.circular(14),
         ),
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 9),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: const Color(0xFF2457D6), size: 36),
-            const SizedBox(height: 14),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Color(0xFF111827),
-                fontSize: 17,
-                height: 1.2,
-                fontWeight: FontWeight.w800,
+            Icon(icon, color: const Color(0xFF2457D6), size: 31),
+            const SizedBox(height: 8),
+            Flexible(
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Color(0xFF111827),
+                  fontSize: 14,
+                  height: 1.12,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
           ],
@@ -434,24 +410,17 @@ class _ToolsHeader extends StatelessWidget {
           onTap: onCustomizeTap,
           child: Row(
             children: const [
-              Icon(Icons.edit_outlined, color: Color(0xFF2457D6)),
-              SizedBox(width: 8),
+              Icon(Icons.edit_outlined, color: Color(0xFF2457D6), size: 23),
+              SizedBox(width: 7),
               Text(
                 'تخصيص',
-                style: TextStyle(
-                  color: Color(0xFF2457D6),
-                  fontSize: 21,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(color: Color(0xFF2457D6), fontSize: 19, fontWeight: FontWeight.w600),
               ),
             ],
           ),
         ),
         const Spacer(),
-        const Text(
-          'أدواتي',
-          style: TextStyle(fontSize: 27, fontWeight: FontWeight.w800),
-        ),
+        const Text('أدواتي', style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800)),
       ],
     );
   }
@@ -465,8 +434,7 @@ class _PlatformStatusCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 150,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.centerRight,
@@ -480,33 +448,37 @@ class _PlatformStatusCard extends StatelessWidget {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
                   'Madrasti Plus Cloud',
-                  style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 7),
                 Text(
                   '$totalSchools مدرسة مسجلة على المنصة',
-                  style: const TextStyle(color: Colors.white70, fontSize: 15),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white70, fontSize: 14),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 9),
                 const Text(
                   'النظام يعمل بشكل طبيعي',
-                  style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
           ),
+          const SizedBox(width: 10),
           Container(
-            width: 82,
-            height: 82,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.14),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.cloud_done_outlined, color: Colors.white, size: 48),
+            width: 68,
+            height: 68,
+            decoration: BoxDecoration(color: Colors.white.withOpacity(0.14), shape: BoxShape.circle),
+            child: const Icon(Icons.cloud_done_outlined, color: Colors.white, size: 40),
           ),
         ],
       ),
@@ -522,21 +494,16 @@ class _SelectedSchoolsStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 18, 12, 16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F8FC),
-        borderRadius: BorderRadius.circular(24),
-      ),
+      padding: const EdgeInsets.fromLTRB(12, 16, 12, 14),
+      decoration: BoxDecoration(color: const Color(0xFFF8F8FC), borderRadius: BorderRadius.circular(24)),
       child: SizedBox(
-        height: 134,
+        height: 126,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           reverse: true,
           itemCount: schools.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 18),
-          itemBuilder: (context, index) {
-            return _SchoolBubble(school: schools[index]);
-          },
+          separatorBuilder: (_, __) => const SizedBox(width: 16),
+          itemBuilder: (context, index) => _SchoolBubble(school: schools[index]),
         ),
       ),
     );
@@ -550,44 +517,38 @@ class _SchoolBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final initials = school.name.trim().isEmpty
-        ? 'M+'
-        : school.name.trim().characters.take(2).join();
+    final initials = school.name.trim().isEmpty ? 'M+' : school.name.trim().characters.take(2).join();
 
     return SizedBox(
-      width: 112,
+      width: 104,
       child: Column(
         children: [
           CircleAvatar(
-            radius: 36,
+            radius: 33,
             backgroundColor: Colors.white,
             child: CircleAvatar(
-              radius: 32,
+              radius: 29,
               backgroundColor: const Color(0xFFEFF3FF),
               child: Text(
                 initials,
-                style: const TextStyle(
-                  color: Color(0xFF2457D6),
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: const TextStyle(color: Color(0xFF2457D6), fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Text(
             school.name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
           ),
           Text(
             school.code,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Color(0xFF6B7280), fontSize: 12),
+            style: const TextStyle(color: Color(0xFF6B7280), fontSize: 11),
           ),
         ],
       ),
@@ -604,10 +565,7 @@ class _EmptySchoolsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F8FC),
-        borderRadius: BorderRadius.circular(22),
-      ),
+      decoration: BoxDecoration(color: const Color(0xFFF8F8FC), borderRadius: BorderRadius.circular(22)),
       child: Column(
         children: [
           const Icon(Icons.school_outlined, size: 46, color: Color(0xFF2457D6)),
@@ -616,11 +574,7 @@ class _EmptySchoolsCard extends StatelessWidget {
           const SizedBox(height: 8),
           const Text('ابدأ بإضافة أول مدرسة على المنصة.'),
           const SizedBox(height: 12),
-          FilledButton.icon(
-            onPressed: onAddSchoolTap,
-            icon: const Icon(Icons.add),
-            label: const Text('إضافة مدرسة'),
-          ),
+          FilledButton.icon(onPressed: onAddSchoolTap, icon: const Icon(Icons.add), label: const Text('إضافة مدرسة')),
         ],
       ),
     );
@@ -634,10 +588,7 @@ class _EmptySearchCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F8FC),
-        borderRadius: BorderRadius.circular(22),
-      ),
+      decoration: BoxDecoration(color: const Color(0xFFF8F8FC), borderRadius: BorderRadius.circular(22)),
       child: const Text('لا توجد نتائج مطابقة للبحث.'),
     );
   }
@@ -677,10 +628,7 @@ class _CreateSchoolForm extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'إضافة مدرسة جديدة',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
+            const Text('إضافة مدرسة جديدة', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             const Text('أدخل بيانات المدرسة ومديرها. رمز المدرسة إجباري وتحدده أنت.'),
             const SizedBox(height: 16),
@@ -775,8 +723,8 @@ class _SuperAdminBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 86,
-      padding: const EdgeInsets.fromLTRB(18, 8, 18, 8),
+      height: 98,
+      padding: const EdgeInsets.fromLTRB(14, 8, 14, 6),
       color: Colors.white,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -797,12 +745,7 @@ class _NavItem extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _NavItem({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
+  const _NavItem({required this.icon, required this.label, required this.selected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -810,12 +753,13 @@ class _NavItem extends StatelessWidget {
       borderRadius: BorderRadius.circular(999),
       onTap: onTap,
       child: SizedBox(
-        width: 82,
+        width: 76,
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             AnimatedContainer(
               duration: const Duration(milliseconds: 180),
-              padding: selected ? const EdgeInsets.symmetric(horizontal: 22, vertical: 7) : EdgeInsets.zero,
+              padding: selected ? const EdgeInsets.symmetric(horizontal: 18, vertical: 6) : EdgeInsets.zero,
               decoration: BoxDecoration(
                 color: selected ? const Color(0xFFEFF3FF) : Colors.transparent,
                 borderRadius: BorderRadius.circular(999),
@@ -823,15 +767,17 @@ class _NavItem extends StatelessWidget {
               child: Icon(
                 icon,
                 color: selected ? const Color(0xFF2457D6) : const Color(0xFF747985),
-                size: 31,
+                size: 28,
               ),
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 4),
             Text(
               label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: selected ? const Color(0xFF2457D6) : const Color(0xFF747985),
-                fontSize: 15,
+                fontSize: 13,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
