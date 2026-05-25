@@ -146,6 +146,7 @@ class _SuperAdminSchoolWizardScreenState extends State<SuperAdminSchoolWizardScr
   void openPicker({required String title, required List<String> items, required String? value, required ValueChanged<String> onSelect}) {
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       showDragHandle: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
@@ -153,35 +154,41 @@ class _SuperAdminSchoolWizardScreenState extends State<SuperAdminSchoolWizardScr
         return Directionality(
           textDirection: TextDirection.rtl,
           child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(22, 8, 22, 24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(title, textAlign: TextAlign.right, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 18),
-                  ...items.map((item) {
-                    final selected = item == value;
-                    return InkWell(
-                      borderRadius: BorderRadius.circular(14),
-                      onTap: () {
-                        onSelect(item);
-                        Navigator.of(context).pop();
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 13),
-                        child: Row(
-                          children: [
-                            Expanded(child: Text(item, textAlign: TextAlign.right, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w600))),
-                            const SizedBox(width: 14),
-                            Icon(selected ? Icons.radio_button_checked : Icons.radio_button_off, color: selected ? blue : hint, size: 26),
-                          ],
-                        ),
+            child: FractionallySizedBox(
+              heightFactor: 0.72,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(22, 8, 22, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(title, textAlign: TextAlign.right, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: ListView(
+                        children: items.map((item) {
+                          final selected = item == value;
+                          return InkWell(
+                            borderRadius: BorderRadius.circular(14),
+                            onTap: () {
+                              onSelect(item);
+                              Navigator.of(context).pop();
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 13),
+                              child: Row(
+                                children: [
+                                  Expanded(child: Text(item, textAlign: TextAlign.right, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w600))),
+                                  const SizedBox(width: 14),
+                                  Icon(selected ? Icons.radio_button_checked : Icons.radio_button_off, color: selected ? blue : hint, size: 26),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
                       ),
-                    );
-                  }),
-                ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
