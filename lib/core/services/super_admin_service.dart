@@ -23,12 +23,16 @@ class PlatformStats {
   });
 
   factory PlatformStats.fromSchoolsOnly(List<School> schools) {
+    final inactiveSchools = schools.where((school) {
+      final status = school.status.toLowerCase();
+      return status == 'inactive' || status == 'suspended' || status == 'stopped';
+    }).length;
     return PlatformStats(
       totalSchools: schools.length,
       totalStudents: 0,
       totalUsers: 0,
-      activeSchools: schools.length,
-      suspendedSchools: 0,
+      activeSchools: schools.length - inactiveSchools,
+      suspendedSchools: inactiveSchools,
     );
   }
 }
@@ -68,11 +72,11 @@ class SuperAdminService {
   Future<PlatformStats> fetchPlatformStats() async {
     final schoolsSnapshot = await _schoolsCollection.get();
     final totalSchools = schoolsSnapshot.docs.length;
-    final suspendedSchools = schoolsSnapshot.docs.where((doc) {
-      final status = (doc.data()['status'] as String? ?? 'active').toLowerCase();
-      return status == 'suspended' || status == 'inactive' || status == 'stopped';
+    final inactiveSchools = schoolsSnapshot.docs.where((doc) {
+      final status = (doc.data()['status'] as String? ?? 'inactive').toLowerCase();
+      return status == 'inactive' || status == 'suspended' || status == 'stopped';
     }).length;
-    final activeSchools = totalSchools - suspendedSchools;
+    final activeSchools = totalSchools - inactiveSchools;
 
     final usersCount = await _safeCount(_usersCollection);
     final studentsCount = await _safeCount(_firestore.collectionGroup('students'));
@@ -82,7 +86,7 @@ class SuperAdminService {
       totalStudents: studentsCount,
       totalUsers: usersCount,
       activeSchools: activeSchools,
-      suspendedSchools: suspendedSchools,
+      suspendedSchools: inactiveSchools,
     );
   }
 
@@ -156,6 +160,7 @@ class SuperAdminService {
         managerName: managerName.trim(),
         email: normalizedEmail,
         adminUserId: adminUser.uid,
+        status: 'inactive',
         createdAt: DateTime.now(),
       );
 
@@ -169,10 +174,7 @@ class SuperAdminService {
       );
 
       await _firestore.runTransaction((transaction) async {
-        transaction.set(schoolDoc, {
-          ...school.toJson(),
-          'status': 'active',
-        });
+        transaction.set(schoolDoc, school.toJson());
         transaction.set(_usersCollection.doc(adminUser.uid), appUser.toJson());
       });
 
