@@ -15,7 +15,6 @@ class _SuperAdminSchoolsScreenState extends State<SuperAdminSchoolsScreen> {
   String? _selectedGovernorate;
 
   static const _blue = Color(0xFF2457D6);
-  static const _bg = Color(0xFFF8F8FC);
   static const _muted = Color(0xFF6B7280);
   static const _governorates = [
     'عمّان',
@@ -59,6 +58,7 @@ class _SuperAdminSchoolsScreenState extends State<SuperAdminSchoolsScreen> {
   void _openGovernoratePicker() {
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       showDragHandle: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
@@ -66,31 +66,39 @@ class _SuperAdminSchoolsScreenState extends State<SuperAdminSchoolsScreen> {
         return Directionality(
           textDirection: TextDirection.rtl,
           child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(22, 8, 22, 24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text('اختر المحافظة', textAlign: TextAlign.right, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 16),
-                  _GovernorateOption(
-                    title: 'كل المحافظات',
-                    selected: _selectedGovernorate == null,
-                    onTap: () {
-                      setState(() => _selectedGovernorate = null);
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                  ..._governorates.map((g) => _GovernorateOption(
-                        title: g,
-                        selected: _selectedGovernorate == g,
-                        onTap: () {
-                          setState(() => _selectedGovernorate = g);
-                          Navigator.of(context).pop();
-                        },
-                      )),
-                ],
+            child: FractionallySizedBox(
+              heightFactor: 0.72,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(22, 8, 22, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text('اختر المحافظة', textAlign: TextAlign.right, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: ListView(
+                        children: [
+                          _GovernorateOption(
+                            title: 'كل المحافظات',
+                            selected: _selectedGovernorate == null,
+                            onTap: () {
+                              setState(() => _selectedGovernorate = null);
+                              Navigator.of(context).pop();
+                            },
+                          ),
+                          ..._governorates.map((g) => _GovernorateOption(
+                                title: g,
+                                selected: _selectedGovernorate == g,
+                                onTap: () {
+                                  setState(() => _selectedGovernorate = g);
+                                  Navigator.of(context).pop();
+                                },
+                              )),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
