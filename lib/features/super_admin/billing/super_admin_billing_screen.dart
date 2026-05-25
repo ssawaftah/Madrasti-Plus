@@ -175,8 +175,7 @@ class _AddSubscriptionViewState extends State<_AddSubscriptionView> {
   final _annualAmount = TextEditingController();
   final _paidAmount = TextEditingController(text: '0');
   School? _school;
-  String? _planType;
-  String? _packageName;
+  DocumentSnapshot<Map<String, dynamic>>? _plan;
   bool _saving = false;
 
   static const _blue = Color(0xFF2457D6);
@@ -190,23 +189,45 @@ class _AddSubscriptionViewState extends State<_AddSubscriptionView> {
   }
 
   List<School> get inactiveSchools => widget.schools.where((s) => s.status != 'active').toList();
-  bool get canSave => _school != null && _planType != null && (_planType == 'تجربة مجانية' || _annualAmount.text.trim().isNotEmpty);
+
+  Map<String, dynamic> get _planData => _plan?.data() ?? const <String, dynamic>{};
+  bool get _isTrial => _planData['type'] == 'trial';
+  bool get canSave => _school != null && _plan != null && (_isTrial || _annualAmount.text.trim().isNotEmpty);
+
+  double _numberFrom(dynamic value) {
+    if (value is int) return value.toDouble();
+    if (value is double) return value;
+    return double.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  int _intFrom(dynamic value, [int fallback = 0]) {
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? fallback;
+  }
 
   Future<void> _save() async {
-    if (!canSave || _saving || _school == null || _planType == null) return;
+    if (!canSave || _saving || _school == null || _plan == null) return;
     setState(() => _saving = true);
     try {
+      final planData = _plan!.data() ?? {};
       final start = DateTime.now();
-      final isTrial = _planType == 'تجربة مجانية';
-      final end = DateTime(start.year + (isTrial ? 0 : 1), start.month + (isTrial ? 1 : 0), start.day);
-      final annual = isTrial ? 0.0 : double.tryParse(_annualAmount.text.trim()) ?? 0.0;
-      final paid = double.tryParse(_paidAmount.text.trim()) ?? 0.0;
+      final durationMonths = _intFrom(planData['durationMonths'], _isTrial ? 1 : 12);
+      final end = DateTime(start.year, start.month + durationMonths, start.day);
+      final annual = _isTrial ? 0.0 : double.tryParse(_annualAmount.text.trim()) ?? _numberFrom(planData['annualPrice']);
+      final paid = _isTrial ? 0.0 : double.tryParse(_paidAmount.text.trim()) ?? 0.0;
+
       await _db.collection('schools').doc(_school!.id).update({
         'status': 'active',
         'subscription': {
-          'planType': _planType,
-          'packageName': _packageName ?? '',
-          'status': isTrial ? 'trial' : 'active',
+          'planId': _plan!.id,
+          'planName': planData['name']?.toString() ?? '',
+          'planType': planData['type']?.toString() ?? '',
+          'pricingMethod': planData['pricingMethod']?.toString() ?? '',
+          'durationMonths': durationMonths,
+          'studentLimit': _intFrom(planData['studentLimit']),
+          'pricePerStudent': _numberFrom(planData['pricePerStudent']),
+          'status': _isTrial ? 'trial' : 'active',
           'startDate': start.toIso8601String(),
           'endDate': end.toIso8601String(),
           'annualAmount': annual,
@@ -219,8 +240,7 @@ class _AddSubscriptionViewState extends State<_AddSubscriptionView> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إضافة الاشتراك وتفعيل المدرسة')));
       setState(() {
         _school = null;
-        _planType = null;
-        _packageName = null;
+        _plan = null;
         _annualAmount.clear();
         _paidAmount.text = '0';
       });
@@ -240,35 +260,27 @@ class _AddSubscriptionViewState extends State<_AddSubscriptionView> {
         onSelect: (s) => setState(() => _school = s),
       );
 
-  void _pickPlan() => _openPicker<String>(
-        title: 'اختر نوع الخطة',
-        items: const ['تجربة مجانية', 'شاملة', 'حسب الطالب'],
-        label: (v) => v,
-        selected: _planType,
-        onSelect: (v) {
+  void _pickPlan(List<DocumentSnapshot<Map<String, dynamic>>> plans) => _openPicker<DocumentSnapshot<Map<String, dynamic>>>(
+        title: 'اختر الخطة',
+        items: plans,
+        label: (doc) {
+          final data = doc.data() ?? {};
+          final name = data['name']?.toString() ?? 'خطة';
+          final annual = data['annualPrice']?.toString() ?? '0';
+          return '$name - $annual د.أ';
+        },
+        selected: _plan,
+        onSelect: (doc) {
+          final data = doc.data() ?? {};
           setState(() {
-            _planType = v;
-            _packageName = null;
-            if (v == 'تجربة مجانية') {
+            _plan = doc;
+            final annual = _numberFrom(data['annualPrice']);
+            _annualAmount.text = annual == 0 ? '' : annual.toStringAsFixed(annual.truncateToDouble() == annual ? 0 : 2);
+            _paidAmount.text = '0';
+            if (data['type'] == 'trial') {
               _annualAmount.text = '0';
               _paidAmount.text = '0';
             }
-          });
-        },
-      );
-
-  void _pickPackage() => _openPicker<String>(
-        title: 'اختر الباقة',
-        items: const ['شاملة 250', 'شاملة 500', 'شاملة 750', 'شاملة 1000+'],
-        label: (v) => v,
-        selected: _packageName,
-        onSelect: (v) {
-          setState(() {
-            _packageName = v;
-            if (v == 'شاملة 250') _annualAmount.text = '3750';
-            if (v == 'شاملة 500') _annualAmount.text = '5000';
-            if (v == 'شاملة 750') _annualAmount.text = '7500';
-            if (v == 'شاملة 1000+') _annualAmount.text = '';
           });
         },
       );
@@ -323,24 +335,61 @@ class _AddSubscriptionViewState extends State<_AddSubscriptionView> {
   @override
   Widget build(BuildContext context) {
     if (inactiveSchools.isEmpty) return const _EmptyState(text: 'لا توجد مدارس غير مفعلة لإضافة اشتراك لها');
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      const Text('إضافة اشتراك', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-      const SizedBox(height: 12),
-      _PickerField(label: 'المدرسة *', value: _school == null ? 'اختر المدرسة' : '${_school!.name} - ${_school!.code}', onTap: _pickSchool),
-      _PickerField(label: 'نوع الخطة *', value: _planType ?? 'اختر نوع الخطة', onTap: _pickPlan),
-      if (_planType == 'شاملة') _PickerField(label: 'الباقة *', value: _packageName ?? 'اختر الباقة', onTap: _pickPackage),
-      _SmallField(label: 'المبلغ السنوي', controller: _annualAmount, enabled: _planType != 'تجربة مجانية'),
-      _SmallField(label: 'المدفوع', controller: _paidAmount, enabled: _planType != 'تجربة مجانية'),
-      const SizedBox(height: 8),
-      SizedBox(
-        height: 54,
-        child: FilledButton(
-          onPressed: _saving || !canSave ? null : _save,
-          style: FilledButton.styleFrom(backgroundColor: _blue, disabledBackgroundColor: const Color(0xFFF1F1F4), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-          child: _saving ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('حفظ الاشتراك وتفعيل المدرسة', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
-        ),
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: _db.collection('billing_plans').where('isActive', isEqualTo: true).snapshots(),
+      builder: (context, snapshot) {
+        final plans = snapshot.data?.docs ?? [];
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: Padding(padding: EdgeInsets.all(22), child: CircularProgressIndicator()));
+        }
+        if (plans.isEmpty) {
+          return const _EmptyState(text: 'لا توجد خطط مفعلة. أضف أو فعّل خطة من تبويب الخطط والأسعار أولًا');
+        }
+        final planName = _plan?.data()?['name']?.toString() ?? 'اختر الخطة';
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          const Text('إضافة اشتراك', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 12),
+          _PickerField(label: 'المدرسة *', value: _school == null ? 'اختر المدرسة' : '${_school!.name} - ${_school!.code}', onTap: _pickSchool),
+          _PickerField(label: 'الخطة *', value: planName, onTap: () => _pickPlan(plans)),
+          if (_plan != null) _PlanPreview(data: _planData),
+          _SmallField(label: 'المبلغ السنوي', controller: _annualAmount, enabled: !_isTrial),
+          _SmallField(label: 'المدفوع', controller: _paidAmount, enabled: !_isTrial),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 54,
+            child: FilledButton(
+              onPressed: _saving || !canSave ? null : _save,
+              style: FilledButton.styleFrom(backgroundColor: _blue, disabledBackgroundColor: const Color(0xFFF1F1F4), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+              child: _saving ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('حفظ الاشتراك وتفعيل المدرسة', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+            ),
+          ),
+        ]);
+      },
+    );
+  }
+}
+
+class _PlanPreview extends StatelessWidget {
+  final Map<String, dynamic> data;
+  const _PlanPreview({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: const Color(0xFFEFF3FF), borderRadius: BorderRadius.circular(16)),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          _MiniChip(text: 'المدة: ${data['durationMonths'] ?? 0} شهر'),
+          _MiniChip(text: 'الحد: ${(data['studentLimit'] ?? 0).toString() == '0' ? 'بدون' : data['studentLimit']}'),
+          _MiniChip(text: 'سعر الطالب: ${data['pricePerStudent'] ?? 0} د.أ'),
+        ],
       ),
-    ]);
+    );
   }
 }
 
@@ -357,13 +406,17 @@ class _PlansManagerView extends StatelessWidget {
   ];
 
   Future<void> _seedDefaults(BuildContext context) async {
-    final batch = _db.batch();
-    for (final plan in _defaults) {
-      final ref = _db.collection('billing_plans').doc();
-      batch.set(ref, {...plan, 'createdAt': DateTime.now().toIso8601String(), 'updatedAt': DateTime.now().toIso8601String()});
+    try {
+      final batch = _db.batch();
+      for (final plan in _defaults) {
+        final ref = _db.collection('billing_plans').doc();
+        batch.set(ref, {...plan, 'createdAt': DateTime.now().toIso8601String(), 'updatedAt': DateTime.now().toIso8601String()});
+      }
+      await batch.commit();
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إنشاء الخطط الافتراضية')));
+    } catch (e) {
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('فشل إنشاء الخطط: $e')));
     }
-    await batch.commit();
-    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إنشاء الخطط الافتراضية')));
   }
 
   void _openForm(BuildContext context, {DocumentSnapshot<Map<String, dynamic>>? doc}) {
@@ -378,8 +431,12 @@ class _PlansManagerView extends StatelessWidget {
   }
 
   Future<void> _delete(BuildContext context, DocumentSnapshot<Map<String, dynamic>> doc) async {
-    await doc.reference.delete();
-    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حذف الخطة')));
+    try {
+      await doc.reference.delete();
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حذف الخطة')));
+    } catch (e) {
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('فشل حذف الخطة: $e')));
+    }
   }
 
   @override
@@ -470,14 +527,20 @@ class _PlanFormState extends State<_PlanForm> {
       'isActive': active,
       'updatedAt': DateTime.now().toIso8601String(),
     };
-    if (widget.doc == null) {
-      await _db.collection('billing_plans').add({...data, 'createdAt': DateTime.now().toIso8601String()});
-    } else {
-      await widget.doc!.reference.update(data);
+    try {
+      if (widget.doc == null) {
+        await _db.collection('billing_plans').add({...data, 'createdAt': DateTime.now().toIso8601String()});
+      } else {
+        await widget.doc!.reference.update(data);
+      }
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(widget.doc == null ? 'تمت إضافة الخطة' : 'تم تعديل الخطة')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر حفظ الخطة: $e')));
+    } finally {
+      if (mounted) setState(() => saving = false);
     }
-    if (!mounted) return;
-    Navigator.of(context).pop();
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(widget.doc == null ? 'تمت إضافة الخطة' : 'تم تعديل الخطة')));
   }
 
   @override
