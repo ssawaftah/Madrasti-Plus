@@ -239,7 +239,7 @@ class _SchoolCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final active = school.status != 'suspended' && school.status != 'inactive' && school.status != 'stopped';
+    final active = _schoolIsActive(school.status);
     final initials = school.name.trim().isEmpty ? 'M+' : school.name.trim().characters.take(2).join();
 
     return Container(
@@ -297,6 +297,14 @@ class _SchoolCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  bool _schoolIsActive(String status) {
+    final normalized = status.toLowerCase().trim();
+    return normalized != 'inactive' &&
+        normalized != 'suspended' &&
+        normalized != 'stopped' &&
+        normalized != 'paused';
   }
 }
 
