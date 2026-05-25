@@ -7,7 +7,7 @@ import '../../core/services/notification_service.dart';
 import '../admin/admin_home_screen.dart';
 import '../gate/gate_home_screen.dart';
 import '../parent/parent_home_screen.dart';
-import '../super_admin/super_admin_home_screen.dart';
+import '../super_admin/super_admin_home_screen_v2.dart';
 import '../teacher/teacher_home_screen.dart';
 import 'login_screen.dart';
 
@@ -56,10 +56,7 @@ class _NotificationInitializer extends StatefulWidget {
   final AppUser appUser;
   final Widget child;
 
-  const _NotificationInitializer({
-    required this.appUser,
-    required this.child,
-  });
+  const _NotificationInitializer({required this.appUser, required this.child});
 
   @override
   State<_NotificationInitializer> createState() => _NotificationInitializerState();
@@ -93,7 +90,7 @@ class _RoleRouter extends StatelessWidget {
   Widget build(BuildContext context) {
     switch (appUser.role) {
       case 'super_admin':
-        return const SuperAdminHomeScreen();
+        return const SuperAdminHomeScreenV2();
       case 'admin':
         return const AdminHomeScreen();
       case 'teacher':
@@ -103,9 +100,7 @@ class _RoleRouter extends StatelessWidget {
       case 'nfc_device':
         return const GateHomeScreen();
       default:
-        return _AuthErrorScreen(
-          message: 'الدور غير معروف: ${appUser.role}',
-        );
+        return _AuthErrorScreen(message: 'الدور غير معروف: ${appUser.role}');
     }
   }
 }
