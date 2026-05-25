@@ -6,6 +6,11 @@ import '../../../core/config/firebase_config.dart';
 import '../../../core/models/school.dart';
 import '../../../core/services/super_admin_service.dart';
 
+FirebaseFirestore get _db => FirebaseFirestore.instanceFor(
+      app: Firebase.app(),
+      databaseId: FirebaseConfig.firestoreDatabaseId,
+    );
+
 class SuperAdminBillingScreen extends StatefulWidget {
   const SuperAdminBillingScreen({super.key});
 
@@ -15,7 +20,6 @@ class SuperAdminBillingScreen extends StatefulWidget {
 
 class _SuperAdminBillingScreenState extends State<SuperAdminBillingScreen> {
   int _selectedTab = 0;
-  static const _muted = Color(0xFF6B7280);
 
   final _tabs = const [
     'الملخص',
@@ -45,7 +49,7 @@ class _SuperAdminBillingScreenState extends State<SuperAdminBillingScreen> {
                   const Text(
                     'إدارة الاشتراكات، الفواتير، الدفعات، والتجارب المجانية للمدارس فقط.',
                     textAlign: TextAlign.right,
-                    style: TextStyle(color: _muted, fontSize: 15, height: 1.4, fontWeight: FontWeight.w600),
+                    style: TextStyle(color: Color(0xFF6B7280), fontSize: 15, height: 1.4, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 18),
                   _TabsBar(tabs: _tabs, selectedIndex: _selectedTab, onChanged: (i) => setState(() => _selectedTab = i)),
@@ -59,7 +63,7 @@ class _SuperAdminBillingScreenState extends State<SuperAdminBillingScreen> {
                   else if (_selectedTab == 3)
                     const _FreeTrialsView()
                   else if (_selectedTab == 4)
-                    const _PlansPricingView()
+                    const _PlansManagerView()
                   else
                     const _BillingAlertsView(),
                 ],
@@ -177,7 +181,6 @@ class _AddSubscriptionViewState extends State<_AddSubscriptionView> {
 
   static const _blue = Color(0xFF2457D6);
   static const _hint = Color(0xFF8E8E93);
-  static const _border = Color(0xFFCFCFD4);
 
   @override
   void dispose() {
@@ -186,10 +189,7 @@ class _AddSubscriptionViewState extends State<_AddSubscriptionView> {
     super.dispose();
   }
 
-  List<School> get inactiveSchools {
-    return widget.schools.where((s) => s.status != 'active').toList();
-  }
-
+  List<School> get inactiveSchools => widget.schools.where((s) => s.status != 'active').toList();
   bool get canSave => _school != null && _planType != null && (_planType == 'تجربة مجانية' || _annualAmount.text.trim().isNotEmpty);
 
   Future<void> _save() async {
@@ -201,12 +201,7 @@ class _AddSubscriptionViewState extends State<_AddSubscriptionView> {
       final end = DateTime(start.year + (isTrial ? 0 : 1), start.month + (isTrial ? 1 : 0), start.day);
       final annual = isTrial ? 0.0 : double.tryParse(_annualAmount.text.trim()) ?? 0.0;
       final paid = double.tryParse(_paidAmount.text.trim()) ?? 0.0;
-      final remaining = annual - paid;
-
-      await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: FirebaseConfig.firestoreDatabaseId)
-          .collection('schools')
-          .doc(_school!.id)
-          .update({
+      await _db.collection('schools').doc(_school!.id).update({
         'status': 'active',
         'subscription': {
           'planType': _planType,
@@ -216,11 +211,10 @@ class _AddSubscriptionViewState extends State<_AddSubscriptionView> {
           'endDate': end.toIso8601String(),
           'annualAmount': annual,
           'paidAmount': paid,
-          'remainingAmount': remaining < 0 ? 0 : remaining,
+          'remainingAmount': (annual - paid) < 0 ? 0 : annual - paid,
           'createdAt': DateTime.now().toIso8601String(),
         },
       });
-
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إضافة الاشتراك وتفعيل المدرسة')));
       setState(() {
@@ -238,52 +232,46 @@ class _AddSubscriptionViewState extends State<_AddSubscriptionView> {
     }
   }
 
-  void _pickSchool() {
-    _openPicker<School>(
-      title: 'اختر المدرسة',
-      items: inactiveSchools,
-      label: (s) => '${s.name} - ${s.code}',
-      selected: _school,
-      onSelect: (s) => setState(() => _school = s),
-    );
-  }
+  void _pickSchool() => _openPicker<School>(
+        title: 'اختر المدرسة',
+        items: inactiveSchools,
+        label: (s) => '${s.name} - ${s.code}',
+        selected: _school,
+        onSelect: (s) => setState(() => _school = s),
+      );
 
-  void _pickPlan() {
-    _openPicker<String>(
-      title: 'اختر نوع الخطة',
-      items: const ['تجربة مجانية', 'شاملة', 'حسب الطالب'],
-      label: (v) => v,
-      selected: _planType,
-      onSelect: (v) {
-        setState(() {
-          _planType = v;
-          _packageName = null;
-          if (v == 'تجربة مجانية') {
-            _annualAmount.text = '0';
-            _paidAmount.text = '0';
-          }
-        });
-      },
-    );
-  }
+  void _pickPlan() => _openPicker<String>(
+        title: 'اختر نوع الخطة',
+        items: const ['تجربة مجانية', 'شاملة', 'حسب الطالب'],
+        label: (v) => v,
+        selected: _planType,
+        onSelect: (v) {
+          setState(() {
+            _planType = v;
+            _packageName = null;
+            if (v == 'تجربة مجانية') {
+              _annualAmount.text = '0';
+              _paidAmount.text = '0';
+            }
+          });
+        },
+      );
 
-  void _pickPackage() {
-    _openPicker<String>(
-      title: 'اختر الباقة',
-      items: const ['شاملة 250', 'شاملة 500', 'شاملة 750', 'شاملة 1000+'],
-      label: (v) => v,
-      selected: _packageName,
-      onSelect: (v) {
-        setState(() {
-          _packageName = v;
-          if (v == 'شاملة 250') _annualAmount.text = '3750';
-          if (v == 'شاملة 500') _annualAmount.text = '5000';
-          if (v == 'شاملة 750') _annualAmount.text = '7500';
-          if (v == 'شاملة 1000+') _annualAmount.text = '';
-        });
-      },
-    );
-  }
+  void _pickPackage() => _openPicker<String>(
+        title: 'اختر الباقة',
+        items: const ['شاملة 250', 'شاملة 500', 'شاملة 750', 'شاملة 1000+'],
+        label: (v) => v,
+        selected: _packageName,
+        onSelect: (v) {
+          setState(() {
+            _packageName = v;
+            if (v == 'شاملة 250') _annualAmount.text = '3750';
+            if (v == 'شاملة 500') _annualAmount.text = '5000';
+            if (v == 'شاملة 750') _annualAmount.text = '7500';
+            if (v == 'شاملة 1000+') _annualAmount.text = '';
+          });
+        },
+      );
 
   void _openPicker<T>({required String title, required List<T> items, required String Function(T) label, required T? selected, required ValueChanged<T> onSelect}) {
     showModalBottomSheet<void>(
@@ -292,79 +280,331 @@ class _AddSubscriptionViewState extends State<_AddSubscriptionView> {
       showDragHandle: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-      builder: (context) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: SafeArea(
-            child: FractionallySizedBox(
-              heightFactor: 0.62,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(22, 8, 22, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(title, textAlign: TextAlign.right, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-                    const SizedBox(height: 12),
-                    Expanded(
-                      child: ListView(
-                        children: items.map((item) {
-                          final isSelected = item == selected;
-                          return InkWell(
-                            borderRadius: BorderRadius.circular(14),
-                            onTap: () {
-                              onSelect(item);
-                              Navigator.of(context).pop();
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 13),
-                              child: Row(
-                                children: [
-                                  Expanded(child: Text(label(item), textAlign: TextAlign.right, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700))),
-                                  const SizedBox(width: 14),
-                                  Icon(isSelected ? Icons.radio_button_checked : Icons.radio_button_off, color: isSelected ? _blue : _hint),
-                                ],
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  ],
+      builder: (context) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: SafeArea(
+          child: FractionallySizedBox(
+            heightFactor: 0.62,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(22, 8, 22, 16),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Text(title, textAlign: TextAlign.right, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: ListView(
+                    children: items.map((item) {
+                      final isSelected = item == selected;
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () {
+                          onSelect(item);
+                          Navigator.of(context).pop();
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          child: Row(children: [
+                            Expanded(child: Text(label(item), textAlign: TextAlign.right, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700))),
+                            const SizedBox(width: 14),
+                            Icon(isSelected ? Icons.radio_button_checked : Icons.radio_button_off, color: isSelected ? _blue : _hint),
+                          ]),
+                        ),
+                      );
+                    }).toList(),
+                  ),
                 ),
-              ),
+              ]),
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (inactiveSchools.isEmpty) {
-      return const _EmptyState(text: 'لا توجد مدارس غير مفعلة لإضافة اشتراك لها');
-    }
+    if (inactiveSchools.isEmpty) return const _EmptyState(text: 'لا توجد مدارس غير مفعلة لإضافة اشتراك لها');
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      const Text('إضافة اشتراك', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+      const SizedBox(height: 12),
+      _PickerField(label: 'المدرسة *', value: _school == null ? 'اختر المدرسة' : '${_school!.name} - ${_school!.code}', onTap: _pickSchool),
+      _PickerField(label: 'نوع الخطة *', value: _planType ?? 'اختر نوع الخطة', onTap: _pickPlan),
+      if (_planType == 'شاملة') _PickerField(label: 'الباقة *', value: _packageName ?? 'اختر الباقة', onTap: _pickPackage),
+      _SmallField(label: 'المبلغ السنوي', controller: _annualAmount, enabled: _planType != 'تجربة مجانية'),
+      _SmallField(label: 'المدفوع', controller: _paidAmount, enabled: _planType != 'تجربة مجانية'),
+      const SizedBox(height: 8),
+      SizedBox(
+        height: 54,
+        child: FilledButton(
+          onPressed: _saving || !canSave ? null : _save,
+          style: FilledButton.styleFrom(backgroundColor: _blue, disabledBackgroundColor: const Color(0xFFF1F1F4), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+          child: _saving ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('حفظ الاشتراك وتفعيل المدرسة', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+        ),
+      ),
+    ]);
+  }
+}
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const Text('إضافة اشتراك', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-        const SizedBox(height: 12),
-        _PickerField(label: 'المدرسة *', value: _school == null ? 'اختر المدرسة' : '${_school!.name} - ${_school!.code}', onTap: _pickSchool),
-        _PickerField(label: 'نوع الخطة *', value: _planType ?? 'اختر نوع الخطة', onTap: _pickPlan),
-        if (_planType == 'شاملة') _PickerField(label: 'الباقة *', value: _packageName ?? 'اختر الباقة', onTap: _pickPackage),
-        _SmallField(label: 'المبلغ السنوي', controller: _annualAmount, enabled: _planType != 'تجربة مجانية'),
-        _SmallField(label: 'المدفوع', controller: _paidAmount, enabled: _planType != 'تجربة مجانية'),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 54,
-          child: FilledButton(
-            onPressed: _saving || !canSave ? null : _save,
-            style: FilledButton.styleFrom(backgroundColor: _blue, disabledBackgroundColor: const Color(0xFFF1F1F4), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-            child: _saving ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('حفظ الاشتراك وتفعيل المدرسة', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+class _PlansManagerView extends StatelessWidget {
+  const _PlansManagerView();
+
+  static const _defaults = [
+    {'name': 'تجربة مجانية', 'type': 'trial', 'durationMonths': 1, 'pricingMethod': 'مجاني', 'pricePerStudent': 0, 'studentLimit': 0, 'annualPrice': 0, 'isActive': true},
+    {'name': 'شاملة 250', 'type': 'bundle', 'durationMonths': 12, 'pricingMethod': 'باقة', 'pricePerStudent': 15, 'studentLimit': 250, 'annualPrice': 3750, 'isActive': true},
+    {'name': 'شاملة 500', 'type': 'bundle', 'durationMonths': 12, 'pricingMethod': 'باقة', 'pricePerStudent': 10, 'studentLimit': 500, 'annualPrice': 5000, 'isActive': true},
+    {'name': 'شاملة 750', 'type': 'bundle', 'durationMonths': 12, 'pricingMethod': 'باقة', 'pricePerStudent': 10, 'studentLimit': 750, 'annualPrice': 7500, 'isActive': true},
+    {'name': 'شاملة 1000+', 'type': 'custom_bundle', 'durationMonths': 12, 'pricingMethod': 'مخصص', 'pricePerStudent': 10, 'studentLimit': 0, 'annualPrice': 0, 'isActive': true},
+    {'name': 'حسب الطالب', 'type': 'per_student', 'durationMonths': 12, 'pricingMethod': 'حسب حساب الطالب', 'pricePerStudent': 20, 'studentLimit': 0, 'annualPrice': 0, 'isActive': true},
+  ];
+
+  Future<void> _seedDefaults(BuildContext context) async {
+    final batch = _db.batch();
+    for (final plan in _defaults) {
+      final ref = _db.collection('billing_plans').doc();
+      batch.set(ref, {...plan, 'createdAt': DateTime.now().toIso8601String(), 'updatedAt': DateTime.now().toIso8601String()});
+    }
+    await batch.commit();
+    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إنشاء الخطط الافتراضية')));
+  }
+
+  void _openForm(BuildContext context, {DocumentSnapshot<Map<String, dynamic>>? doc}) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (_) => _PlanForm(doc: doc),
+    );
+  }
+
+  Future<void> _delete(BuildContext context, DocumentSnapshot<Map<String, dynamic>> doc) async {
+    await doc.reference.delete();
+    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حذف الخطة')));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: _db.collection('billing_plans').snapshots(),
+      builder: (context, snapshot) {
+        final docs = snapshot.data?.docs ?? [];
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            const Expanded(child: Text('الخطط والأسعار', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900))),
+            IconButton(onPressed: () => _openForm(context), icon: const Icon(Icons.add_circle, color: Color(0xFF2457D6), size: 32)),
+          ]),
+          const SizedBox(height: 8),
+          if (snapshot.connectionState == ConnectionState.waiting)
+            const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()))
+          else if (docs.isEmpty)
+            Column(children: [
+              const _EmptyState(text: 'لا توجد خطط بعد'),
+              const SizedBox(height: 12),
+              SizedBox(width: double.infinity, height: 50, child: FilledButton.icon(onPressed: () => _seedDefaults(context), icon: const Icon(Icons.auto_fix_high), label: const Text('إنشاء الخطط الافتراضية'))),
+            ])
+          else
+            ...docs.map((doc) => _PlanManagementCard(doc: doc, onEdit: () => _openForm(context, doc: doc), onDelete: () => _delete(context, doc))),
+        ]);
+      },
+    );
+  }
+}
+
+class _PlanForm extends StatefulWidget {
+  final DocumentSnapshot<Map<String, dynamic>>? doc;
+  const _PlanForm({this.doc});
+
+  @override
+  State<_PlanForm> createState() => _PlanFormState();
+}
+
+class _PlanFormState extends State<_PlanForm> {
+  final name = TextEditingController();
+  final duration = TextEditingController(text: '12');
+  final method = TextEditingController();
+  final price = TextEditingController(text: '0');
+  final limit = TextEditingController(text: '0');
+  final annual = TextEditingController(text: '0');
+  String type = 'bundle';
+  bool active = true;
+  bool saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final data = widget.doc?.data();
+    if (data != null) {
+      name.text = data['name']?.toString() ?? '';
+      type = data['type']?.toString() ?? 'bundle';
+      duration.text = data['durationMonths']?.toString() ?? '12';
+      method.text = data['pricingMethod']?.toString() ?? '';
+      price.text = data['pricePerStudent']?.toString() ?? '0';
+      limit.text = data['studentLimit']?.toString() ?? '0';
+      annual.text = data['annualPrice']?.toString() ?? '0';
+      active = data['isActive'] != false;
+    }
+  }
+
+  @override
+  void dispose() {
+    name.dispose();
+    duration.dispose();
+    method.dispose();
+    price.dispose();
+    limit.dispose();
+    annual.dispose();
+    super.dispose();
+  }
+
+  Future<void> save() async {
+    if (name.text.trim().isEmpty || saving) return;
+    setState(() => saving = true);
+    final data = {
+      'name': name.text.trim(),
+      'type': type,
+      'durationMonths': int.tryParse(duration.text.trim()) ?? 12,
+      'pricingMethod': method.text.trim(),
+      'pricePerStudent': double.tryParse(price.text.trim()) ?? 0,
+      'studentLimit': int.tryParse(limit.text.trim()) ?? 0,
+      'annualPrice': double.tryParse(annual.text.trim()) ?? 0,
+      'isActive': active,
+      'updatedAt': DateTime.now().toIso8601String(),
+    };
+    if (widget.doc == null) {
+      await _db.collection('billing_plans').add({...data, 'createdAt': DateTime.now().toIso8601String()});
+    } else {
+      await widget.doc!.reference.update(data);
+    }
+    if (!mounted) return;
+    Navigator.of(context).pop();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(widget.doc == null ? 'تمت إضافة الخطة' : 'تم تعديل الخطة')));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(18, 8, 18, MediaQuery.of(context).viewInsets.bottom + 18),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+            Text(widget.doc == null ? 'إضافة خطة' : 'تعديل خطة', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 14),
+            _SmallField(label: 'اسم الخطة', controller: name),
+            _PickerField(label: 'نوع الخطة', value: _typeLabel(type), onTap: pickType),
+            _SmallField(label: 'المدة بالأشهر', controller: duration),
+            _SmallField(label: 'طريقة التسعير', controller: method),
+            _SmallField(label: 'سعر الطالب', controller: price),
+            _SmallField(label: 'حد الطلاب / 0 بدون حد', controller: limit),
+            _SmallField(label: 'السعر السنوي', controller: annual),
+            SwitchListTile(
+              value: active,
+              onChanged: (v) => setState(() => active = v),
+              title: const Text('الخطة مفعلة', style: TextStyle(fontWeight: FontWeight.w800)),
+              activeColor: const Color(0xFF2457D6),
+              contentPadding: EdgeInsets.zero,
+            ),
+            const SizedBox(height: 8),
+            SizedBox(height: 52, child: FilledButton(onPressed: saving ? null : save, child: Text(saving ? 'جاري الحفظ...' : 'حفظ الخطة'))),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  String _typeLabel(String value) {
+    if (value == 'trial') return 'تجربة مجانية';
+    if (value == 'bundle') return 'شاملة';
+    if (value == 'custom_bundle') return 'شاملة مخصصة';
+    if (value == 'per_student') return 'حسب الطالب';
+    return value;
+  }
+
+  void pickType() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (_) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              const Text('اختر نوع الخطة', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+              _TypeOption(label: 'تجربة مجانية', value: 'trial', selected: type, onSelect: setType),
+              _TypeOption(label: 'شاملة', value: 'bundle', selected: type, onSelect: setType),
+              _TypeOption(label: 'شاملة مخصصة', value: 'custom_bundle', selected: type, onSelect: setType),
+              _TypeOption(label: 'حسب الطالب', value: 'per_student', selected: type, onSelect: setType),
+            ]),
           ),
         ),
-      ],
+      ),
+    );
+  }
+
+  void setType(String value) {
+    setState(() => type = value);
+    Navigator.of(context).pop();
+  }
+}
+
+class _TypeOption extends StatelessWidget {
+  final String label;
+  final String value;
+  final String selected;
+  final ValueChanged<String> onSelect;
+  const _TypeOption({required this.label, required this.value, required this.selected, required this.onSelect});
+
+  @override
+  Widget build(BuildContext context) {
+    final isSelected = value == selected;
+    return ListTile(
+      onTap: () => onSelect(value),
+      title: Text(label, textAlign: TextAlign.right, style: const TextStyle(fontWeight: FontWeight.w800)),
+      leading: Icon(isSelected ? Icons.radio_button_checked : Icons.radio_button_off, color: isSelected ? const Color(0xFF2457D6) : const Color(0xFF8E8E93)),
+    );
+  }
+}
+
+class _PlanManagementCard extends StatelessWidget {
+  final DocumentSnapshot<Map<String, dynamic>> doc;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+  const _PlanManagementCard({required this.doc, required this.onEdit, required this.onDelete});
+
+  @override
+  Widget build(BuildContext context) {
+    final data = doc.data() ?? {};
+    final active = data['isActive'] != false;
+    final name = data['name']?.toString() ?? 'خطة';
+    final pricePerStudent = data['pricePerStudent']?.toString() ?? '0';
+    final limit = data['studentLimit']?.toString() ?? '0';
+    final annual = data['annualPrice']?.toString() ?? '0';
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: const Color(0xFFF8F8FC), borderRadius: BorderRadius.circular(18)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Container(width: 42, height: 42, decoration: BoxDecoration(color: const Color(0xFFEFF3FF), borderRadius: BorderRadius.circular(14)), child: const Icon(Icons.workspace_premium_outlined, color: Color(0xFF2457D6))),
+          const SizedBox(width: 12),
+          Expanded(child: Text(name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900))),
+          _StatusBadge(text: active ? 'مفعلة' : 'معطلة', active: active),
+        ]),
+        const SizedBox(height: 10),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          _MiniChip(text: 'سعر الطالب: $pricePerStudent د.أ'),
+          _MiniChip(text: limit == '0' ? 'بدون حد' : 'الحد: $limit'),
+          _MiniChip(text: 'سنويًا: $annual د.أ'),
+        ]),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(child: OutlinedButton.icon(onPressed: onEdit, icon: const Icon(Icons.edit_outlined, size: 18), label: const Text('تعديل'))),
+          const SizedBox(width: 8),
+          Expanded(child: OutlinedButton.icon(onPressed: onDelete, icon: const Icon(Icons.delete_outline, size: 18), label: const Text('حذف'), style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFFB42318)))),
+        ]),
+      ]),
     );
   }
 }
@@ -376,12 +616,9 @@ class _PickerField extends StatelessWidget {
   const _PickerField({required this.label, required this.value, required this.onTap});
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 14),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Text(label, textAlign: TextAlign.right, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
           const SizedBox(height: 7),
           InkWell(
@@ -394,10 +631,8 @@ class _PickerField extends StatelessWidget {
               child: Row(children: [Expanded(child: Text(value, textAlign: TextAlign.right, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF4B5563)))), const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF8E8E93))]),
             ),
           ),
-        ],
-      ),
-    );
-  }
+        ]),
+      );
 }
 
 class _SmallField extends StatelessWidget {
@@ -407,25 +642,23 @@ class _SmallField extends StatelessWidget {
   const _SmallField({required this.label, required this.controller, this.enabled = true});
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text(label, textAlign: TextAlign.right, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
-        const SizedBox(height: 7),
-        SizedBox(
-          height: 52,
-          child: TextField(
-            controller: controller,
-            enabled: enabled,
-            keyboardType: TextInputType.number,
-            textAlign: TextAlign.right,
-            decoration: InputDecoration(contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 14),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text(label, textAlign: TextAlign.right, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 7),
+          SizedBox(
+            height: 52,
+            child: TextField(
+              controller: controller,
+              enabled: enabled,
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.right,
+              decoration: InputDecoration(contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
+            ),
           ),
-        ),
-      ]),
-    );
-  }
+        ]),
+      );
 }
 
 class _MetricCard extends StatelessWidget {
@@ -435,20 +668,18 @@ class _MetricCard extends StatelessWidget {
   const _MetricCard({required this.icon, required this.title, required this.value});
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: const Color(0xFFF8F8FC), borderRadius: BorderRadius.circular(18)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Container(width: 40, height: 40, decoration: BoxDecoration(color: const Color(0xFFEFF3FF), borderRadius: BorderRadius.circular(14)), child: Icon(icon, color: const Color(0xFF2457D6), size: 23)),
-        Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 21, height: 1, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 6),
-          Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF6B7280), fontSize: 12.5, height: 1.15, fontWeight: FontWeight.w700)),
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: const Color(0xFFF8F8FC), borderRadius: BorderRadius.circular(18)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Container(width: 40, height: 40, decoration: BoxDecoration(color: const Color(0xFFEFF3FF), borderRadius: BorderRadius.circular(14)), child: Icon(icon, color: const Color(0xFF2457D6), size: 23)),
+          Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 21, height: 1, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 6),
+            Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF6B7280), fontSize: 12.5, height: 1.15, fontWeight: FontWeight.w700)),
+          ]),
         ]),
-      ]),
-    );
-  }
+      );
 }
 
 class _RuleCard extends StatelessWidget {
@@ -482,36 +713,31 @@ class _SubscriptionSchoolCard extends StatelessWidget {
   const _SubscriptionSchoolCard({required this.school});
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: const Color(0xFFF8F8FC), borderRadius: BorderRadius.circular(20)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Row(children: [Expanded(child: Text(school.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900))), const _StatusBadge(text: 'نشط', active: true)]),
-        const SizedBox(height: 8),
-        Text('رمز المدرسة: ${school.code}', style: const TextStyle(color: Color(0xFF6B7280), fontWeight: FontWeight.w700)),
-        const SizedBox(height: 8),
-        const Wrap(spacing: 8, runSpacing: 8, children: [_MiniChip(text: 'نوع الخطة: محفوظ'), _MiniChip(text: 'المدفوع: محفوظ'), _MiniChip(text: 'المتبقي: محفوظ')]),
-        const SizedBox(height: 12),
-        SizedBox(height: 42, child: OutlinedButton.icon(onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تفاصيل الاشتراك في المرحلة القادمة'))), icon: const Icon(Icons.visibility_outlined, size: 19), label: const Text('عرض'), style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFF2457D6), side: const BorderSide(color: Color(0xFFD9E1FF)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))))),
-      ]),
-    );
-  }
+  Widget build(BuildContext context) => Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(color: const Color(0xFFF8F8FC), borderRadius: BorderRadius.circular(20)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [Expanded(child: Text(school.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900))), const _StatusBadge(text: 'نشط', active: true)]),
+          const SizedBox(height: 8),
+          Text('رمز المدرسة: ${school.code}', style: const TextStyle(color: Color(0xFF6B7280), fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          const Wrap(spacing: 8, runSpacing: 8, children: [_MiniChip(text: 'نوع الخطة: محفوظ'), _MiniChip(text: 'المدفوع: محفوظ'), _MiniChip(text: 'المتبقي: محفوظ')]),
+          const SizedBox(height: 12),
+          SizedBox(height: 42, child: OutlinedButton.icon(onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تفاصيل الاشتراك في المرحلة القادمة'))), icon: const Icon(Icons.visibility_outlined, size: 19), label: const Text('عرض'), style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFF2457D6), side: const BorderSide(color: Color(0xFFD9E1FF)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))))),
+        ]),
+      );
 }
 
 class _FreeTrialsView extends StatelessWidget { const _FreeTrialsView(); @override Widget build(BuildContext context) => const _PlaceholderList(title: 'التجارب المجانية', items: ['إنشاء تجربة مجانية', 'تمديد التجربة', 'إنهاء التجربة', 'تحويل إلى خطة مدفوعة']); }
-class _PlansPricingView extends StatelessWidget { const _PlansPricingView(); @override Widget build(BuildContext context) => const Column(children: [_PlanCard(title: 'تجربة مجانية', subtitle: 'شهر واحد - مجاني'), _PlanCard(title: 'شاملة 250', subtitle: '250 طالب × 15 د.أ = 3,750 د.أ سنويًا'), _PlanCard(title: 'شاملة 500', subtitle: '500 طالب × 10 د.أ = 5,000 د.أ سنويًا'), _PlanCard(title: 'شاملة 750', subtitle: '750 طالب × 10 د.أ = 7,500 د.أ سنويًا'), _PlanCard(title: 'شاملة 1000+', subtitle: 'عدد مخصص × 10 د.أ سنويًا'), _PlanCard(title: 'حسب الطالب', subtitle: '20 د.أ سنويًا لكل حساب طالب')]); }
 class _BillingAlertsView extends StatelessWidget { const _BillingAlertsView(); @override Widget build(BuildContext context) => const _PlaceholderList(title: 'تنبيهات الفوترة', items: ['اشتراك ينتهي قريبًا', 'تجربة تنتهي قريبًا', 'حسابات غير مدفوعة', 'مدرسة وصلت حد الخطة', 'دفعة متأخرة']); }
 
 class _PlaceholderList extends StatelessWidget {
-  final String title; final List<String> items; const _PlaceholderList({required this.title, required this.items});
-  @override Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)), const SizedBox(height: 12), ...items.map((i) => Container(margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: const Color(0xFFF8F8FC), borderRadius: BorderRadius.circular(16)), child: Row(children: [const Icon(Icons.circle, color: Color(0xFF2457D6), size: 10), const SizedBox(width: 10), Expanded(child: Text(i, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)))])))]);
-}
-
-class _PlanCard extends StatelessWidget {
-  final String title; final String subtitle; const _PlanCard({required this.title, required this.subtitle});
-  @override Widget build(BuildContext context) => Container(margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: const Color(0xFFF8F8FC), borderRadius: BorderRadius.circular(18)), child: Row(children: [Container(width: 42, height: 42, decoration: BoxDecoration(color: const Color(0xFFEFF3FF), borderRadius: BorderRadius.circular(14)), child: const Icon(Icons.workspace_premium_outlined, color: Color(0xFF2457D6))), const SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)), const SizedBox(height: 3), Text(subtitle, style: const TextStyle(color: Color(0xFF6B7280), fontWeight: FontWeight.w600))]))]));
+  final String title;
+  final List<String> items;
+  const _PlaceholderList({required this.title, required this.items});
+  @override
+  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)), const SizedBox(height: 12), ...items.map((i) => Container(margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: const Color(0xFFF8F8FC), borderRadius: BorderRadius.circular(16)), child: Row(children: [const Icon(Icons.circle, color: Color(0xFF2457D6), size: 10), const SizedBox(width: 10), Expanded(child: Text(i, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)))])))]);
 }
 
 class _MiniChip extends StatelessWidget { final String text; const _MiniChip({required this.text}); @override Widget build(BuildContext context) => Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(999)), child: Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF4B5563)))); }
