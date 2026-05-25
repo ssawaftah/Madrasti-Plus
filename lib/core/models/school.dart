@@ -27,7 +27,7 @@ class School {
     required this.managerName,
     required this.email,
     required this.adminUserId,
-    this.status = 'active',
+    this.status = 'inactive',
     required this.createdAt,
   });
 
@@ -45,7 +45,7 @@ class School {
       managerName: json['managerName'] as String? ?? '',
       email: json['email'] as String? ?? '',
       adminUserId: json['adminUserId'] as String? ?? '',
-      status: json['status'] as String? ?? 'active',
+      status: json['status'] as String? ?? 'inactive',
       createdAt: json['createdAt'] == null
           ? DateTime.now()
           : DateTime.parse(json['createdAt'] as String),
