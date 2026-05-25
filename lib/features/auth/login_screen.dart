@@ -182,6 +182,18 @@ class _LoginScreenState extends State<LoginScreen> {
       child: Scaffold(
         backgroundColor: Colors.white,
         resizeToAvoidBottomInset: true,
+        bottomNavigationBar: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 0, 18, 4),
+            child: _BottomTabs(
+              selectedIndex: _selectedTabIndex,
+              onHelpTap: _showHelpSheet,
+              onLoginTap: () => setState(() => _selectedTabIndex = 1),
+              onContactTap: _showContactSheet,
+            ),
+          ),
+        ),
         body: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -192,62 +204,52 @@ class _LoginScreenState extends State<LoginScreen> {
 
               return SingleChildScrollView(
                 keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 18),
-                    child: Column(
-                      children: [
-                        SizedBox(height: isCompact ? 8 : 14),
-                        _TopBar(onLanguageTap: _showLanguageSheet),
-                        SizedBox(height: isCompact ? 34 : 54),
-                        const _MadrastiLogo(),
-                        SizedBox(height: isCompact ? 42 : 58),
-                        SizedBox(
-                          width: contentWidth,
-                          child: _LoginForm(
-                            schoolCodeController: _schoolCodeController,
-                            emailController: _emailController,
-                            passwordController: _passwordController,
-                            obscurePassword: _obscurePassword,
-                            isLoading: _isLoading,
-                            onTogglePassword: () {
-                              setState(() => _obscurePassword = !_obscurePassword);
-                            },
-                            onLogin: _login,
-                          ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: Column(
+                    children: [
+                      SizedBox(height: isCompact ? 8 : 14),
+                      _TopBar(onLanguageTap: _showLanguageSheet),
+                      SizedBox(height: isCompact ? 34 : 54),
+                      const _MadrastiLogo(),
+                      SizedBox(height: isCompact ? 42 : 58),
+                      SizedBox(
+                        width: contentWidth,
+                        child: _LoginForm(
+                          schoolCodeController: _schoolCodeController,
+                          emailController: _emailController,
+                          passwordController: _passwordController,
+                          obscurePassword: _obscurePassword,
+                          isLoading: _isLoading,
+                          onTogglePassword: () {
+                            setState(() => _obscurePassword = !_obscurePassword);
+                          },
+                          onLogin: _login,
                         ),
-                        SizedBox(height: isCompact ? 12 : 16),
-                        SizedBox(
-                          width: contentWidth,
-                          child: Row(
-                            children: const [
-                              Expanded(
-                                child: _FeatureCard(
-                                  icon: Icons.notifications_active_outlined,
-                                  title: 'تنبيهات\nفورية',
-                                ),
+                      ),
+                      SizedBox(height: isCompact ? 12 : 16),
+                      SizedBox(
+                        width: contentWidth,
+                        child: Row(
+                          children: const [
+                            Expanded(
+                              child: _FeatureCard(
+                                icon: Icons.notifications_active_outlined,
+                                title: 'تنبيهات\nفورية',
                               ),
-                              SizedBox(width: 12),
-                              Expanded(
-                                child: _FeatureCard(
-                                  icon: Icons.analytics_outlined,
-                                  title: 'تقارير\nذكية',
-                                ),
+                            ),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: _FeatureCard(
+                                icon: Icons.analytics_outlined,
+                                title: 'تقارير\nذكية',
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                        SizedBox(height: isCompact ? 22 : 30),
-                        _BottomTabs(
-                          selectedIndex: _selectedTabIndex,
-                          onHelpTap: _showHelpSheet,
-                          onLoginTap: () => setState(() => _selectedTabIndex = 1),
-                          onContactTap: _showContactSheet,
-                        ),
-                        const SizedBox(height: 10),
-                      ],
-                    ),
+                      ),
+                      SizedBox(height: isCompact ? 16 : 24),
+                    ],
                   ),
                 ),
               );
@@ -499,28 +501,31 @@ class _BottomTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        _BottomTab(
-          icon: Icons.help_outline,
-          label: 'المساعدة',
-          selected: selectedIndex == 0,
-          onTap: onHelpTap,
-        ),
-        _BottomTab(
-          icon: Icons.account_circle_outlined,
-          label: 'الدخول',
-          selected: selectedIndex == 1,
-          onTap: onLoginTap,
-        ),
-        _BottomTab(
-          icon: Icons.support_agent,
-          label: 'تواصل معنا',
-          selected: selectedIndex == 2,
-          onTap: onContactTap,
-        ),
-      ],
+    return SizedBox(
+      height: 58,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _BottomTab(
+            icon: Icons.help_outline,
+            label: 'المساعدة',
+            selected: selectedIndex == 0,
+            onTap: onHelpTap,
+          ),
+          _BottomTab(
+            icon: Icons.account_circle_outlined,
+            label: 'الدخول',
+            selected: selectedIndex == 1,
+            onTap: onLoginTap,
+          ),
+          _BottomTab(
+            icon: Icons.support_agent,
+            label: 'تواصل معنا',
+            selected: selectedIndex == 2,
+            onTap: onContactTap,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -544,12 +549,14 @@ class _BottomTab extends StatelessWidget {
       borderRadius: BorderRadius.circular(999),
       onTap: onTap,
       child: SizedBox(
-        width: 105,
+        width: 88,
+        height: 56,
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             AnimatedContainer(
               duration: const Duration(milliseconds: 180),
-              padding: selected ? const EdgeInsets.symmetric(horizontal: 18, vertical: 6) : EdgeInsets.zero,
+              padding: selected ? const EdgeInsets.symmetric(horizontal: 16, vertical: 4) : EdgeInsets.zero,
               decoration: BoxDecoration(
                 color: selected ? const Color(0xFFEFF3FF) : Colors.transparent,
                 borderRadius: BorderRadius.circular(999),
@@ -557,15 +564,17 @@ class _BottomTab extends StatelessWidget {
               child: Icon(
                 icon,
                 color: selected ? _LoginScreenState._blue : const Color(0xFF747985),
-                size: 29,
+                size: 25,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Text(
               label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: selected ? _LoginScreenState._blue : const Color(0xFF747985),
-                fontSize: 14,
+                fontSize: 12.5,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
