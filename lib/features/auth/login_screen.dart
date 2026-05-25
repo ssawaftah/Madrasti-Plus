@@ -181,76 +181,66 @@ class _LoginScreenState extends State<LoginScreen> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: Colors.white,
-        resizeToAvoidBottomInset: true,
-        bottomNavigationBar: SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(18, 0, 18, 4),
-            child: _BottomTabs(
-              selectedIndex: _selectedTabIndex,
-              onHelpTap: _showHelpSheet,
-              onLoginTap: () => setState(() => _selectedTabIndex = 1),
-              onContactTap: _showContactSheet,
-            ),
-          ),
-        ),
+        resizeToAvoidBottomInset: false,
         body: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
               final isCompact = constraints.maxHeight < 740;
-              final contentWidth = constraints.maxWidth > 420
-                  ? 360.0
-                  : constraints.maxWidth - 52;
+              final contentWidth = constraints.maxWidth > 420 ? 360.0 : constraints.maxWidth - 52;
 
-              return SingleChildScrollView(
-                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 18),
-                  child: Column(
-                    children: [
-                      SizedBox(height: isCompact ? 8 : 14),
-                      _TopBar(onLanguageTap: _showLanguageSheet),
-                      SizedBox(height: isCompact ? 34 : 54),
-                      const _MadrastiLogo(),
-                      SizedBox(height: isCompact ? 42 : 58),
-                      SizedBox(
-                        width: contentWidth,
-                        child: _LoginForm(
-                          schoolCodeController: _schoolCodeController,
-                          emailController: _emailController,
-                          passwordController: _passwordController,
-                          obscurePassword: _obscurePassword,
-                          isLoading: _isLoading,
-                          onTogglePassword: () {
-                            setState(() => _obscurePassword = !_obscurePassword);
-                          },
-                          onLogin: _login,
-                        ),
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: Column(
+                  children: [
+                    SizedBox(height: isCompact ? 10 : 16),
+                    _TopBar(onLanguageTap: _showLanguageSheet),
+                    SizedBox(height: isCompact ? 32 : 50),
+                    const _MadrastiLogo(),
+                    SizedBox(height: isCompact ? 38 : 56),
+                    SizedBox(
+                      width: contentWidth,
+                      child: _LoginForm(
+                        schoolCodeController: _schoolCodeController,
+                        emailController: _emailController,
+                        passwordController: _passwordController,
+                        obscurePassword: _obscurePassword,
+                        isLoading: _isLoading,
+                        onTogglePassword: () {
+                          setState(() => _obscurePassword = !_obscurePassword);
+                        },
+                        onLogin: _login,
                       ),
-                      SizedBox(height: isCompact ? 12 : 16),
-                      SizedBox(
-                        width: contentWidth,
-                        child: Row(
-                          children: const [
-                            Expanded(
-                              child: _FeatureCard(
-                                icon: Icons.notifications_active_outlined,
-                                title: 'تنبيهات\nفورية',
-                              ),
+                    ),
+                    SizedBox(height: isCompact ? 12 : 16),
+                    SizedBox(
+                      width: contentWidth,
+                      child: Row(
+                        children: const [
+                          Expanded(
+                            child: _FeatureCard(
+                              icon: Icons.notifications_active_outlined,
+                              title: 'تنبيهات\nفورية',
                             ),
-                            SizedBox(width: 12),
-                            Expanded(
-                              child: _FeatureCard(
-                                icon: Icons.analytics_outlined,
-                                title: 'تقارير\nذكية',
-                              ),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: _FeatureCard(
+                              icon: Icons.analytics_outlined,
+                              title: 'تقارير\nذكية',
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                      SizedBox(height: isCompact ? 16 : 24),
-                    ],
-                  ),
+                    ),
+                    const Spacer(),
+                    _BottomTabs(
+                      selectedIndex: _selectedTabIndex,
+                      onHelpTap: _showHelpSheet,
+                      onLoginTap: () => setState(() => _selectedTabIndex = 1),
+                      onContactTap: _showContactSheet,
+                    ),
+                    const SizedBox(height: 6),
+                  ],
                 ),
               );
             },
@@ -428,8 +418,8 @@ class _SanadLikeField extends StatelessWidget {
           hintStyle: const TextStyle(fontSize: 16, color: Color(0xFF5C6472), fontWeight: FontWeight.w500),
           prefixIcon: Icon(icon, color: _LoginScreenState._blue, size: 24),
           suffixIcon: suffixIcon,
-          filled: true,
-          fillColor: const Color(0xFFFBFCFF),
+          filled: false,
+          fillColor: Colors.transparent,
           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
@@ -474,8 +464,8 @@ class _FeatureCard extends StatelessWidget {
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: _LoginScreenState._blue,
-                fontSize: 14,
-                height: 1.15,
+                fontSize: 15,
+                height: 1.18,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -501,31 +491,28 @@ class _BottomTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 58,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _BottomTab(
-            icon: Icons.help_outline,
-            label: 'المساعدة',
-            selected: selectedIndex == 0,
-            onTap: onHelpTap,
-          ),
-          _BottomTab(
-            icon: Icons.account_circle_outlined,
-            label: 'الدخول',
-            selected: selectedIndex == 1,
-            onTap: onLoginTap,
-          ),
-          _BottomTab(
-            icon: Icons.support_agent,
-            label: 'تواصل معنا',
-            selected: selectedIndex == 2,
-            onTap: onContactTap,
-          ),
-        ],
-      ),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _BottomTab(
+          icon: Icons.help_outline,
+          label: 'المساعدة',
+          selected: selectedIndex == 0,
+          onTap: onHelpTap,
+        ),
+        _BottomTab(
+          icon: Icons.account_circle_outlined,
+          label: 'الدخول',
+          selected: selectedIndex == 1,
+          onTap: onLoginTap,
+        ),
+        _BottomTab(
+          icon: Icons.support_agent,
+          label: 'تواصل معنا',
+          selected: selectedIndex == 2,
+          onTap: onContactTap,
+        ),
+      ],
     );
   }
 }
@@ -549,14 +536,12 @@ class _BottomTab extends StatelessWidget {
       borderRadius: BorderRadius.circular(999),
       onTap: onTap,
       child: SizedBox(
-        width: 88,
-        height: 56,
+        width: 105,
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             AnimatedContainer(
               duration: const Duration(milliseconds: 180),
-              padding: selected ? const EdgeInsets.symmetric(horizontal: 16, vertical: 4) : EdgeInsets.zero,
+              padding: selected ? const EdgeInsets.symmetric(horizontal: 20, vertical: 7) : EdgeInsets.zero,
               decoration: BoxDecoration(
                 color: selected ? const Color(0xFFEFF3FF) : Colors.transparent,
                 borderRadius: BorderRadius.circular(999),
@@ -564,17 +549,15 @@ class _BottomTab extends StatelessWidget {
               child: Icon(
                 icon,
                 color: selected ? _LoginScreenState._blue : const Color(0xFF747985),
-                size: 25,
+                size: 31,
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 5),
             Text(
               label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: selected ? _LoginScreenState._blue : const Color(0xFF747985),
-                fontSize: 12.5,
+                fontSize: 15,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
