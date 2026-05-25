@@ -1,5 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/config/firebase_config.dart';
 import '../../core/services/super_admin_service.dart';
 
 class SuperAdminSchoolWizardScreen extends StatefulWidget {
@@ -18,6 +21,7 @@ class _SuperAdminSchoolWizardScreenState extends State<SuperAdminSchoolWizardScr
   final email = TextEditingController();
   final pass = TextEditingController();
 
+  String? governorate;
   String? schoolType;
   String? stage;
   String? studentsType;
@@ -28,6 +32,20 @@ class _SuperAdminSchoolWizardScreenState extends State<SuperAdminSchoolWizardScr
   static const blue = Color(0xFF2457D6);
   static const border = Color(0xFFCFCFD4);
   static const hint = Color(0xFF8E8E93);
+  static const jordanGovernorates = [
+    'عمّان',
+    'إربد',
+    'الزرقاء',
+    'البلقاء',
+    'مأدبا',
+    'الكرك',
+    'الطفيلة',
+    'معان',
+    'العقبة',
+    'جرش',
+    'عجلون',
+    'المفرق',
+  ];
 
   @override
   void dispose() {
@@ -49,7 +67,7 @@ class _SuperAdminSchoolWizardScreenState extends State<SuperAdminSchoolWizardScr
 
   bool get canContinue {
     if (step == 0) {
-      return name.text.trim().isNotEmpty && address.text.trim().isNotEmpty && phone.text.trim().isNotEmpty;
+      return name.text.trim().isNotEmpty && governorate != null && address.text.trim().isNotEmpty && phone.text.trim().isNotEmpty;
     }
     if (step == 1) {
       return schoolType != null && stage != null && studentsType != null && manager.text.trim().isNotEmpty;
@@ -60,31 +78,27 @@ class _SuperAdminSchoolWizardScreenState extends State<SuperAdminSchoolWizardScr
   void toast(String msg) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
   bool valid() {
-    if (step == 0) {
-      if (!canContinue) {
-        toast('أكمل المعلومات الأساسية');
+    if (step == 0 && !canContinue) {
+      toast('أكمل المعلومات الأساسية');
+      return false;
+    }
+    if (step == 1 && !canContinue) {
+      toast('أكمل المعلومات التفصيلية');
+      return false;
+    }
+    if (step == 2) {
+      if (code.text.trim().length < 3) {
+        toast('رمز المدرسة قصير');
         return false;
       }
-      return true;
-    }
-    if (step == 1) {
-      if (!canContinue) {
-        toast('أكمل المعلومات التفصيلية');
+      if (!email.text.trim().contains('@')) {
+        toast('البريد الإلكتروني غير صحيح');
         return false;
       }
-      return true;
-    }
-    if (code.text.trim().length < 3) {
-      toast('رمز المدرسة قصير');
-      return false;
-    }
-    if (!email.text.trim().contains('@')) {
-      toast('البريد الإلكتروني غير صحيح');
-      return false;
-    }
-    if (pass.text.length < 6) {
-      toast('كلمة السر قصيرة');
-      return false;
+      if (pass.text.length < 6) {
+        toast('كلمة السر قصيرة');
+        return false;
+      }
     }
     return true;
   }
@@ -113,6 +127,12 @@ class _SuperAdminSchoolWizardScreenState extends State<SuperAdminSchoolWizardScr
         email: email.text.trim(),
         password: pass.text,
       );
+
+      await FirebaseFirestore.instanceFor(
+        app: Firebase.app(),
+        databaseId: FirebaseConfig.firestoreDatabaseId,
+      ).collection('schools').doc(school.id).update({'governorate': governorate ?? ''});
+
       if (!mounted) return;
       toast('تم حفظ المدرسة. الرمز: ${school.code}');
       Navigator.of(context).pop();
@@ -123,19 +143,12 @@ class _SuperAdminSchoolWizardScreenState extends State<SuperAdminSchoolWizardScr
     }
   }
 
-  void openPicker({
-    required String title,
-    required List<String> items,
-    required String? value,
-    required ValueChanged<String> onSelect,
-  }) {
+  void openPicker({required String title, required List<String> items, required String? value, required ValueChanged<String> onSelect}) {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
       builder: (context) {
         return Directionality(
           textDirection: TextDirection.rtl,
@@ -206,15 +219,11 @@ class _SuperAdminSchoolWizardScreenState extends State<SuperAdminSchoolWizardScr
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 18),
-                child: Row(
-                  children: List.generate(3, (i) => Expanded(
-                    child: Container(
-                      margin: EdgeInsets.only(left: i == 2 ? 0 : 4),
-                      height: 6,
-                      decoration: BoxDecoration(color: i <= step ? blue : const Color(0xFFEDEDF2), borderRadius: BorderRadius.circular(99)),
-                    ),
-                  )),
-                ),
+                child: Row(children: List.generate(3, (i) => Expanded(child: Container(
+                  margin: EdgeInsets.only(left: i == 2 ? 0 : 4),
+                  height: 6,
+                  decoration: BoxDecoration(color: i <= step ? blue : const Color(0xFFEDEDF2), borderRadius: BorderRadius.circular(99)),
+                )))),
               ),
               Expanded(
                 child: ListView(
@@ -224,6 +233,7 @@ class _SuperAdminSchoolWizardScreenState extends State<SuperAdminSchoolWizardScr
                     const SizedBox(height: 18),
                     if (step == 0) ...[
                       field('اسم المدرسة *', 'اسم المدرسة', name),
+                      select('المحافظة *', 'اختر المحافظة', governorate, jordanGovernorates, (v) => setState(() => governorate = v)),
                       field('عنوان المدرسة *', 'عنوان المدرسة', address),
                       field('رقم هاتف المدرسة *', 'رقم هاتف المدرسة', phone, type: TextInputType.phone),
                     ] else if (step == 1) ...[
@@ -246,14 +256,7 @@ class _SuperAdminSchoolWizardScreenState extends State<SuperAdminSchoolWizardScr
                   width: double.infinity,
                   child: FilledButton(
                     onPressed: saving || !canContinue ? null : (step == 2 ? save : next),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: blue,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: const Color(0xFFF1F1F4),
-                      disabledForegroundColor: const Color(0xFF777777),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
+                    style: FilledButton.styleFrom(backgroundColor: blue, foregroundColor: Colors.white, disabledBackgroundColor: const Color(0xFFF1F1F4), disabledForegroundColor: const Color(0xFF777777), elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                     child: saving ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)) : Text(step == 2 ? 'حفظ المدرسة' : 'التالي', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
                   ),
                 ),
@@ -266,41 +269,19 @@ class _SuperAdminSchoolWizardScreenState extends State<SuperAdminSchoolWizardScr
   }
 
   Widget field(String label, String hintText, TextEditingController c, {bool obscure = false, TextInputType? type, TextCapitalization caps = TextCapitalization.none, Widget? suffix}) {
-    return shell(label, TextField(
-      controller: c,
-      obscureText: obscure,
-      keyboardType: type,
-      textCapitalization: caps,
-      textAlign: TextAlign.right,
-      onChanged: (_) => setState(() {}),
-      style: const TextStyle(fontSize: 17, color: Color(0xFF111827)),
-      decoration: deco(hintText, suffix),
-    ));
+    return shell(label, TextField(controller: c, obscureText: obscure, keyboardType: type, textCapitalization: caps, textAlign: TextAlign.right, onChanged: (_) => setState(() {}), style: const TextStyle(fontSize: 17, color: Color(0xFF111827)), decoration: deco(hintText, suffix)));
   }
 
   Widget select(String label, String hintText, String? val, List<String> list, ValueChanged<String?> change) {
     return shell(label, InkWell(
       borderRadius: BorderRadius.circular(12),
-      onTap: () => openPicker(
-        title: label.replaceAll('*', '').trim(),
-        items: list,
-        value: val,
-        onSelect: (v) => change(v),
-      ),
+      onTap: () => openPicker(title: label.replaceAll('*', '').trim(), items: list, value: val, onSelect: (v) => change(v)),
       child: InputDecorator(
         decoration: deco(hintText, null),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                val ?? hintText,
-                textAlign: TextAlign.right,
-                style: TextStyle(color: val == null ? hint : const Color(0xFF111827), fontSize: 17, fontWeight: FontWeight.w500),
-              ),
-            ),
-            const Icon(Icons.keyboard_arrow_down_rounded, color: hint, size: 30),
-          ],
-        ),
+        child: Row(children: [
+          Expanded(child: Text(val ?? hintText, textAlign: TextAlign.right, style: TextStyle(color: val == null ? hint : const Color(0xFF111827), fontSize: 17, fontWeight: FontWeight.w500))),
+          const Icon(Icons.keyboard_arrow_down_rounded, color: hint, size: 30),
+        ]),
       ),
     ));
   }
@@ -310,16 +291,7 @@ class _SuperAdminSchoolWizardScreenState extends State<SuperAdminSchoolWizardScr
     return Padding(
       padding: const EdgeInsets.only(bottom: 18),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: RichText(
-            textAlign: TextAlign.right,
-            text: TextSpan(
-              style: const TextStyle(color: Color(0xFF111827), fontSize: 16, fontWeight: FontWeight.w800, fontFamily: 'Roboto'),
-              children: [TextSpan(text: clean), if (label.contains('*')) const TextSpan(text: ' *', style: TextStyle(color: Color(0xFFDC2626)))],
-            ),
-          ),
-        ),
+        Padding(padding: const EdgeInsets.only(bottom: 8), child: RichText(textAlign: TextAlign.right, text: TextSpan(style: const TextStyle(color: Color(0xFF111827), fontSize: 16, fontWeight: FontWeight.w800, fontFamily: 'Roboto'), children: [TextSpan(text: clean), if (label.contains('*')) const TextSpan(text: ' *', style: TextStyle(color: Color(0xFFDC2626)))]))),
         SizedBox(height: 54, child: child),
       ]),
     );
