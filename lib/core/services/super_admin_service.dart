@@ -7,6 +7,32 @@ import '../config/firebase_config.dart';
 import '../models/app_user.dart';
 import '../models/school.dart';
 
+class PlatformStats {
+  final int totalSchools;
+  final int totalStudents;
+  final int totalUsers;
+  final int activeSchools;
+  final int suspendedSchools;
+
+  const PlatformStats({
+    required this.totalSchools,
+    required this.totalStudents,
+    required this.totalUsers,
+    required this.activeSchools,
+    required this.suspendedSchools,
+  });
+
+  factory PlatformStats.fromSchoolsOnly(List<School> schools) {
+    return PlatformStats(
+      totalSchools: schools.length,
+      totalStudents: 0,
+      totalUsers: 0,
+      activeSchools: schools.length,
+      suspendedSchools: 0,
+    );
+  }
+}
+
 class SuperAdminService {
   SuperAdminService({FirebaseAuth? auth, FirebaseFirestore? firestore})
     : _auth = auth ?? FirebaseAuth.instance,
@@ -37,6 +63,36 @@ class SuperAdminService {
             return School.fromJson({...doc.data(), 'id': doc.id});
           }).toList();
         });
+  }
+
+  Future<PlatformStats> fetchPlatformStats() async {
+    final schoolsSnapshot = await _schoolsCollection.get();
+    final totalSchools = schoolsSnapshot.docs.length;
+    final suspendedSchools = schoolsSnapshot.docs.where((doc) {
+      final status = (doc.data()['status'] as String? ?? 'active').toLowerCase();
+      return status == 'suspended' || status == 'inactive' || status == 'stopped';
+    }).length;
+    final activeSchools = totalSchools - suspendedSchools;
+
+    final usersCount = await _safeCount(_usersCollection);
+    final studentsCount = await _safeCount(_firestore.collectionGroup('students'));
+
+    return PlatformStats(
+      totalSchools: totalSchools,
+      totalStudents: studentsCount,
+      totalUsers: usersCount,
+      activeSchools: activeSchools,
+      suspendedSchools: suspendedSchools,
+    );
+  }
+
+  Future<int> _safeCount(Query<Map<String, dynamic>> query) async {
+    try {
+      final snapshot = await query.count().get();
+      return snapshot.count ?? 0;
+    } catch (_) {
+      return 0;
+    }
   }
 
   Future<School> createSchool({
@@ -105,7 +161,10 @@ class SuperAdminService {
       );
 
       await _firestore.runTransaction((transaction) async {
-        transaction.set(schoolDoc, school.toJson());
+        transaction.set(schoolDoc, {
+          ...school.toJson(),
+          'status': 'active',
+        });
         transaction.set(_usersCollection.doc(adminUser.uid), appUser.toJson());
       });
 
