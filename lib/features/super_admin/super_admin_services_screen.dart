@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/models/school.dart';
 import '../../core/services/super_admin_service.dart';
-import 'super_admin_add_school_screen.dart';
+import 'super_admin_school_wizard_screen.dart';
 
 class SuperAdminServicesScreen extends StatefulWidget {
   const SuperAdminServicesScreen({super.key});
@@ -34,7 +34,7 @@ class _SuperAdminServicesScreenState extends State<SuperAdminServicesScreen> {
 
   void _openAddSchool() {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const SuperAdminAddSchoolScreen()),
+      MaterialPageRoute(builder: (_) => const SuperAdminSchoolWizardScreen()),
     );
   }
 
