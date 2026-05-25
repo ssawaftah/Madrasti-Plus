@@ -52,7 +52,11 @@ class _SuperAdminBillingScreenState extends State<SuperAdminBillingScreen> {
                     style: TextStyle(color: Color(0xFF6B7280), fontSize: 15, height: 1.4, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 18),
-                  _TabsBar(tabs: _tabs, selectedIndex: _selectedTab, onChanged: (i) => setState(() => _selectedTab = i)),
+                  _TabsBar(
+                    tabs: _tabs,
+                    selectedIndex: _selectedTab,
+                    onChanged: (i) => setState(() => _selectedTab = i),
+                  ),
                   const SizedBox(height: 18),
                   if (_selectedTab == 0)
                     _BillingSummary(schools: schools)
@@ -119,7 +123,10 @@ class _TabsBar extends StatelessWidget {
             selectedColor: const Color(0xFFEFF3FF),
             backgroundColor: const Color(0xFFF8F8FC),
             side: BorderSide(color: selected ? const Color(0xFF2457D6) : const Color(0xFFE5E7EB)),
-            labelStyle: TextStyle(color: selected ? const Color(0xFF2457D6) : const Color(0xFF4B5563), fontWeight: FontWeight.w800),
+            labelStyle: TextStyle(
+              color: selected ? const Color(0xFF2457D6) : const Color(0xFF4B5563),
+              fontWeight: FontWeight.w800,
+            ),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
           );
         },
@@ -135,6 +142,7 @@ class _BillingSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final activeSchools = schools.where((s) => s.status == 'active').length;
+    final trialSchools = schools.where((s) => s.status == 'trial').length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -147,7 +155,7 @@ class _BillingSummary extends StatelessWidget {
           childAspectRatio: 1.08,
           children: [
             _MetricCard(icon: Icons.verified_outlined, title: 'المدارس النشطة', value: activeSchools.toString()),
-            const _MetricCard(icon: Icons.hourglass_top_rounded, title: 'المدارس التجريبية', value: '0'),
+            _MetricCard(icon: Icons.hourglass_top_rounded, title: 'المدارس التجريبية', value: trialSchools.toString()),
             const _MetricCard(icon: Icons.event_busy_outlined, title: 'تنتهي خلال 30 يوم', value: '0'),
             const _MetricCard(icon: Icons.warning_amber_rounded, title: 'الاشتراكات المنتهية', value: '0'),
             const _MetricCard(icon: Icons.payments_outlined, title: 'إجمالي المدفوع', value: '0 د.أ'),
@@ -188,7 +196,7 @@ class _AddSubscriptionViewState extends State<_AddSubscriptionView> {
     super.dispose();
   }
 
-  List<School> get inactiveSchools => widget.schools.where((s) => s.status != 'active').toList();
+  List<School> get inactiveSchools => widget.schools.where((s) => s.status != 'active' && s.status != 'trial').toList();
 
   Map<String, dynamic> get _planData => _plan?.data() ?? const <String, dynamic>{};
   bool get _isTrial => _planData['type'] == 'trial';
@@ -218,7 +226,7 @@ class _AddSubscriptionViewState extends State<_AddSubscriptionView> {
       final paid = _isTrial ? 0.0 : double.tryParse(_paidAmount.text.trim()) ?? 0.0;
 
       await _db.collection('schools').doc(_school!.id).update({
-        'status': 'active',
+        'status': _isTrial ? 'trial' : 'active',
         'subscription': {
           'planId': _plan!.id,
           'planName': planData['name']?.toString() ?? '',
@@ -237,7 +245,7 @@ class _AddSubscriptionViewState extends State<_AddSubscriptionView> {
         },
       });
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إضافة الاشتراك وتفعيل المدرسة')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_isTrial ? 'تم إنشاء التجربة المجانية' : 'تم إضافة الاشتراك وتفعيل المدرسة')));
       setState(() {
         _school = null;
         _plan = null;
@@ -353,21 +361,104 @@ class _AddSubscriptionViewState extends State<_AddSubscriptionView> {
           _PickerField(label: 'المدرسة *', value: _school == null ? 'اختر المدرسة' : '${_school!.name} - ${_school!.code}', onTap: _pickSchool),
           _PickerField(label: 'الخطة *', value: planName, onTap: () => _pickPlan(plans)),
           if (_plan != null) _PlanPreview(data: _planData),
-          _SmallField(label: 'المبلغ السنوي', controller: _annualAmount, enabled: !_isTrial),
-          _SmallField(label: 'المدفوع', controller: _paidAmount, enabled: !_isTrial),
+          _SmallField(label: 'المبلغ السنوي', controller: _annualAmount, enabled: !_isTrial, keyboardType: TextInputType.number),
+          _SmallField(label: 'المدفوع', controller: _paidAmount, enabled: !_isTrial, keyboardType: TextInputType.number),
           const SizedBox(height: 8),
           SizedBox(
             height: 54,
             child: FilledButton(
               onPressed: _saving || !canSave ? null : _save,
               style: FilledButton.styleFrom(backgroundColor: _blue, disabledBackgroundColor: const Color(0xFFF1F1F4), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-              child: _saving ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('حفظ الاشتراك وتفعيل المدرسة', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+              child: _saving ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('حفظ الاشتراك', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
             ),
           ),
         ]);
       },
     );
   }
+}
+
+class _FreeTrialsView extends StatelessWidget {
+  const _FreeTrialsView();
+
+  int _daysLeft(Map<String, dynamic> data) {
+    final subscription = data['subscription'] is Map<String, dynamic> ? data['subscription'] as Map<String, dynamic> : <String, dynamic>{};
+    final endText = subscription['endDate']?.toString();
+    final end = endText == null ? null : DateTime.tryParse(endText);
+    if (end == null) return 0;
+    return end.difference(DateTime.now()).inDays + 1;
+  }
+
+  Future<void> _extend(BuildContext context, DocumentSnapshot<Map<String, dynamic>> doc) async {
+    final data = doc.data() ?? {};
+    final subscription = data['subscription'] is Map<String, dynamic> ? Map<String, dynamic>.from(data['subscription'] as Map<String, dynamic>) : <String, dynamic>{};
+    final oldEnd = DateTime.tryParse(subscription['endDate']?.toString() ?? '') ?? DateTime.now();
+    final newEnd = DateTime(oldEnd.year, oldEnd.month + 1, oldEnd.day);
+    subscription['endDate'] = newEnd.toIso8601String();
+    await doc.reference.update({'subscription': subscription});
+    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تمديد التجربة شهرًا إضافيًا')));
+  }
+
+  Future<void> _endTrial(BuildContext context, DocumentSnapshot<Map<String, dynamic>> doc) async {
+    await doc.reference.update({'status': 'inactive', 'subscription.status': 'ended'});
+    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إنهاء التجربة')));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: _db.collection('schools').where('status', isEqualTo: 'trial').snapshots(),
+      builder: (context, snapshot) {
+        final docs = snapshot.data?.docs ?? [];
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: Padding(padding: EdgeInsets.all(22), child: CircularProgressIndicator()));
+        }
+        if (docs.isEmpty) return const _EmptyState(text: 'لا توجد مدارس في التجربة المجانية');
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text('التجارب المجانية', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 12),
+            ...docs.map((doc) {
+              final data = doc.data();
+              final subscription = data['subscription'] is Map<String, dynamic> ? data['subscription'] as Map<String, dynamic> : <String, dynamic>{};
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(color: const Color(0xFFF8F8FC), borderRadius: BorderRadius.circular(20)),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  Row(children: [
+                    Expanded(child: Text(data['name']?.toString() ?? 'مدرسة', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
+                    const _StatusBadge(text: 'تجريبية', active: true),
+                  ]),
+                  const SizedBox(height: 8),
+                  Text('رمز المدرسة: ${data['code'] ?? ''}', style: const TextStyle(color: Color(0xFF6B7280), fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 10),
+                  Wrap(spacing: 8, runSpacing: 8, children: [
+                    _MiniChip(text: 'بداية: ${_formatDate(subscription['startDate'])}'),
+                    _MiniChip(text: 'نهاية: ${_formatDate(subscription['endDate'])}'),
+                    _MiniChip(text: 'الأيام المتبقية: ${_daysLeft(data)}'),
+                  ]),
+                  const SizedBox(height: 12),
+                  Row(children: [
+                    Expanded(child: OutlinedButton.icon(onPressed: () => _extend(context, doc), icon: const Icon(Icons.add, size: 18), label: const Text('تمديد'))),
+                    const SizedBox(width: 8),
+                    Expanded(child: OutlinedButton.icon(onPressed: () => _endTrial(context, doc), icon: const Icon(Icons.stop_circle_outlined, size: 18), label: const Text('إنهاء'), style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFFB42318)))),
+                  ]),
+                ]),
+              );
+            }),
+          ],
+        );
+      },
+    );
+  }
+}
+
+String _formatDate(dynamic value) {
+  final date = DateTime.tryParse(value?.toString() ?? '');
+  if (date == null) return '—';
+  return '${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}';
 }
 
 class _PlanPreview extends StatelessWidget {
@@ -380,15 +471,11 @@ class _PlanPreview extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(color: const Color(0xFFEFF3FF), borderRadius: BorderRadius.circular(16)),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          _MiniChip(text: 'المدة: ${data['durationMonths'] ?? 0} شهر'),
-          _MiniChip(text: 'الحد: ${(data['studentLimit'] ?? 0).toString() == '0' ? 'بدون' : data['studentLimit']}'),
-          _MiniChip(text: 'سعر الطالب: ${data['pricePerStudent'] ?? 0} د.أ'),
-        ],
-      ),
+      child: Wrap(spacing: 8, runSpacing: 8, children: [
+        _MiniChip(text: 'المدة: ${data['durationMonths'] ?? 0} شهر'),
+        _MiniChip(text: 'الحد: ${(data['studentLimit'] ?? 0).toString() == '0' ? 'بدون' : data['studentLimit']}'),
+        _MiniChip(text: 'سعر الطالب: ${data['pricePerStudent'] ?? 0} د.أ'),
+      ]),
     );
   }
 }
@@ -553,13 +640,13 @@ class _PlanFormState extends State<_PlanForm> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
             Text(widget.doc == null ? 'إضافة خطة' : 'تعديل خطة', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
             const SizedBox(height: 14),
-            _SmallField(label: 'اسم الخطة', controller: name),
+            _SmallField(label: 'اسم الخطة', controller: name, keyboardType: TextInputType.text),
             _PickerField(label: 'نوع الخطة', value: _typeLabel(type), onTap: pickType),
-            _SmallField(label: 'المدة بالأشهر', controller: duration),
-            _SmallField(label: 'طريقة التسعير', controller: method),
-            _SmallField(label: 'سعر الطالب', controller: price),
-            _SmallField(label: 'حد الطلاب / 0 بدون حد', controller: limit),
-            _SmallField(label: 'السعر السنوي', controller: annual),
+            _SmallField(label: 'المدة بالأشهر', controller: duration, keyboardType: TextInputType.number),
+            _SmallField(label: 'طريقة التسعير', controller: method, keyboardType: TextInputType.text),
+            _SmallField(label: 'سعر الطالب', controller: price, keyboardType: TextInputType.number),
+            _SmallField(label: 'حد الطلاب / 0 بدون حد', controller: limit, keyboardType: TextInputType.number),
+            _SmallField(label: 'السعر السنوي', controller: annual, keyboardType: TextInputType.number),
             SwitchListTile(
               value: active,
               onChanged: (v) => setState(() => active = v),
@@ -702,7 +789,8 @@ class _SmallField extends StatelessWidget {
   final String label;
   final TextEditingController controller;
   final bool enabled;
-  const _SmallField({required this.label, required this.controller, this.enabled = true});
+  final TextInputType keyboardType;
+  const _SmallField({required this.label, required this.controller, this.enabled = true, this.keyboardType = TextInputType.text});
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -715,7 +803,7 @@ class _SmallField extends StatelessWidget {
             child: TextField(
               controller: controller,
               enabled: enabled,
-              keyboardType: TextInputType.number,
+              keyboardType: keyboardType,
               textAlign: TextAlign.right,
               decoration: InputDecoration(contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
             ),
@@ -792,8 +880,11 @@ class _SubscriptionSchoolCard extends StatelessWidget {
       );
 }
 
-class _FreeTrialsView extends StatelessWidget { const _FreeTrialsView(); @override Widget build(BuildContext context) => const _PlaceholderList(title: 'التجارب المجانية', items: ['إنشاء تجربة مجانية', 'تمديد التجربة', 'إنهاء التجربة', 'تحويل إلى خطة مدفوعة']); }
-class _BillingAlertsView extends StatelessWidget { const _BillingAlertsView(); @override Widget build(BuildContext context) => const _PlaceholderList(title: 'تنبيهات الفوترة', items: ['اشتراك ينتهي قريبًا', 'تجربة تنتهي قريبًا', 'حسابات غير مدفوعة', 'مدرسة وصلت حد الخطة', 'دفعة متأخرة']); }
+class _BillingAlertsView extends StatelessWidget {
+  const _BillingAlertsView();
+  @override
+  Widget build(BuildContext context) => const _PlaceholderList(title: 'تنبيهات الفوترة', items: ['اشتراك ينتهي قريبًا', 'تجربة تنتهي قريبًا', 'حسابات غير مدفوعة', 'مدرسة وصلت حد الخطة', 'دفعة متأخرة']);
+}
 
 class _PlaceholderList extends StatelessWidget {
   final String title;
@@ -803,6 +894,24 @@ class _PlaceholderList extends StatelessWidget {
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)), const SizedBox(height: 12), ...items.map((i) => Container(margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: const Color(0xFFF8F8FC), borderRadius: BorderRadius.circular(16)), child: Row(children: [const Icon(Icons.circle, color: Color(0xFF2457D6), size: 10), const SizedBox(width: 10), Expanded(child: Text(i, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)))])))]);
 }
 
-class _MiniChip extends StatelessWidget { final String text; const _MiniChip({required this.text}); @override Widget build(BuildContext context) => Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(999)), child: Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF4B5563)))); }
-class _StatusBadge extends StatelessWidget { final String text; final bool active; const _StatusBadge({required this.text, required this.active}); @override Widget build(BuildContext context) => Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), decoration: BoxDecoration(color: active ? const Color(0xFFE9F8EF) : const Color(0xFFFFF0F0), borderRadius: BorderRadius.circular(999)), child: Text(text, style: TextStyle(color: active ? const Color(0xFF16833A) : const Color(0xFFB42318), fontSize: 12, fontWeight: FontWeight.w900))); }
-class _EmptyState extends StatelessWidget { final String text; const _EmptyState({required this.text}); @override Widget build(BuildContext context) => Container(padding: const EdgeInsets.all(22), decoration: BoxDecoration(color: const Color(0xFFF8F8FC), borderRadius: BorderRadius.circular(22)), child: Column(children: [const Icon(Icons.receipt_long_outlined, size: 44, color: Color(0xFF2457D6)), const SizedBox(height: 10), Text(text, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800))])); }
+class _MiniChip extends StatelessWidget {
+  final String text;
+  const _MiniChip({required this.text});
+  @override
+  Widget build(BuildContext context) => Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(999)), child: Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF4B5563))));
+}
+
+class _StatusBadge extends StatelessWidget {
+  final String text;
+  final bool active;
+  const _StatusBadge({required this.text, required this.active});
+  @override
+  Widget build(BuildContext context) => Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), decoration: BoxDecoration(color: active ? const Color(0xFFE9F8EF) : const Color(0xFFFFF0F0), borderRadius: BorderRadius.circular(999)), child: Text(text, style: TextStyle(color: active ? const Color(0xFF16833A) : const Color(0xFFB42318), fontSize: 12, fontWeight: FontWeight.w900)));
+}
+
+class _EmptyState extends StatelessWidget {
+  final String text;
+  const _EmptyState({required this.text});
+  @override
+  Widget build(BuildContext context) => Container(padding: const EdgeInsets.all(22), decoration: BoxDecoration(color: const Color(0xFFF8F8FC), borderRadius: BorderRadius.circular(22)), child: Column(children: [const Icon(Icons.receipt_long_outlined, size: 44, color: Color(0xFF2457D6)), const SizedBox(height: 10), Text(text, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800))]));
+}
