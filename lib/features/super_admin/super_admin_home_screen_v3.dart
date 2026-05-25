@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/models/school.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/super_admin_service.dart';
-import 'super_admin_home_screen_v2.dart';
+import 'super_admin_add_school_screen.dart';
 import 'widgets/platform_stats_section.dart';
 
 class SuperAdminHomeScreenV3 extends StatefulWidget {
@@ -43,7 +43,7 @@ class _SuperAdminHomeScreenV3State extends State<SuperAdminHomeScreenV3> {
 
   void _openAddSchoolScreen() {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const SuperAdminHomeScreenV2()),
+      MaterialPageRoute(builder: (_) => const SuperAdminAddSchoolScreen()),
     );
   }
 
