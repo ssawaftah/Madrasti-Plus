@@ -7,7 +7,7 @@ import '../../core/services/notification_service.dart';
 import '../admin/admin_home_screen.dart';
 import '../gate/gate_home_screen.dart';
 import '../parent/parent_home_screen.dart';
-import '../super_admin/super_admin_home_screen_v2.dart';
+import '../super_admin/super_admin_home_screen_v3.dart';
 import '../teacher/teacher_home_screen.dart';
 import 'login_screen.dart';
 
@@ -90,7 +90,7 @@ class _RoleRouter extends StatelessWidget {
   Widget build(BuildContext context) {
     switch (appUser.role) {
       case 'super_admin':
-        return const SuperAdminHomeScreenV2();
+        return const SuperAdminHomeScreenV3();
       case 'admin':
         return const AdminHomeScreen();
       case 'teacher':
