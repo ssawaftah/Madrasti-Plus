@@ -3,6 +3,10 @@ class School {
   final String code;
   final String name;
   final String address;
+  final String phone;
+  final String type;
+  final String educationStage;
+  final String studentGender;
   final String managerName;
   final String email;
   final String adminUserId;
@@ -13,6 +17,10 @@ class School {
     required this.code,
     required this.name,
     required this.address,
+    this.phone = '',
+    this.type = '',
+    this.educationStage = '',
+    this.studentGender = '',
     required this.managerName,
     required this.email,
     required this.adminUserId,
@@ -25,6 +33,10 @@ class School {
       code: json['code'] as String? ?? '',
       name: json['name'] as String? ?? '',
       address: json['address'] as String? ?? '',
+      phone: json['phone'] as String? ?? '',
+      type: json['type'] as String? ?? '',
+      educationStage: json['educationStage'] as String? ?? '',
+      studentGender: json['studentGender'] as String? ?? '',
       managerName: json['managerName'] as String? ?? '',
       email: json['email'] as String? ?? '',
       adminUserId: json['adminUserId'] as String? ?? '',
@@ -39,6 +51,10 @@ class School {
       'code': code,
       'name': name,
       'address': address,
+      'phone': phone,
+      'type': type,
+      'educationStage': educationStage,
+      'studentGender': studentGender,
       'managerName': managerName,
       'email': email,
       'adminUserId': adminUserId,
