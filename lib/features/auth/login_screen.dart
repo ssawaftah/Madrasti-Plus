@@ -181,61 +181,74 @@ class _LoginScreenState extends State<LoginScreen> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: Colors.white,
-        resizeToAvoidBottomInset: false,
+        resizeToAvoidBottomInset: true,
         body: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
               final isCompact = constraints.maxHeight < 740;
-              final topGap = isCompact ? 54.0 : 76.0;
-              final formGap = isCompact ? 48.0 : 70.0;
+              final contentWidth = constraints.maxWidth > 420
+                  ? 360.0
+                  : constraints.maxWidth - 52;
 
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                child: Column(
-                  children: [
-                    SizedBox(height: isCompact ? 12 : 18),
-                    _TopBar(onLanguageTap: _showLanguageSheet),
-                    SizedBox(height: topGap),
-                    const _MadrastiLogo(),
-                    SizedBox(height: formGap),
-                    _LoginForm(
-                      schoolCodeController: _schoolCodeController,
-                      emailController: _emailController,
-                      passwordController: _passwordController,
-                      obscurePassword: _obscurePassword,
-                      isLoading: _isLoading,
-                      onTogglePassword: () {
-                        setState(() => _obscurePassword = !_obscurePassword);
-                      },
-                      onLogin: _login,
-                    ),
-                    SizedBox(height: isCompact ? 14 : 18),
-                    Row(
-                      children: const [
-                        Expanded(
-                          child: _FeatureCard(
-                            icon: Icons.notifications_active_outlined,
-                            title: 'تنبيهات\nفورية',
+              return SingleChildScrollView(
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
+                    child: Column(
+                      children: [
+                        SizedBox(height: isCompact ? 8 : 14),
+                        _TopBar(onLanguageTap: _showLanguageSheet),
+                        SizedBox(height: isCompact ? 34 : 54),
+                        const _MadrastiLogo(),
+                        SizedBox(height: isCompact ? 42 : 58),
+                        SizedBox(
+                          width: contentWidth,
+                          child: _LoginForm(
+                            schoolCodeController: _schoolCodeController,
+                            emailController: _emailController,
+                            passwordController: _passwordController,
+                            obscurePassword: _obscurePassword,
+                            isLoading: _isLoading,
+                            onTogglePassword: () {
+                              setState(() => _obscurePassword = !_obscurePassword);
+                            },
+                            onLogin: _login,
                           ),
                         ),
-                        SizedBox(width: 14),
-                        Expanded(
-                          child: _FeatureCard(
-                            icon: Icons.analytics_outlined,
-                            title: 'تقارير\nذكية',
+                        SizedBox(height: isCompact ? 12 : 16),
+                        SizedBox(
+                          width: contentWidth,
+                          child: Row(
+                            children: const [
+                              Expanded(
+                                child: _FeatureCard(
+                                  icon: Icons.notifications_active_outlined,
+                                  title: 'تنبيهات\nفورية',
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: _FeatureCard(
+                                  icon: Icons.analytics_outlined,
+                                  title: 'تقارير\nذكية',
+                                ),
+                              ),
+                            ],
                           ),
                         ),
+                        SizedBox(height: isCompact ? 22 : 30),
+                        _BottomTabs(
+                          selectedIndex: _selectedTabIndex,
+                          onHelpTap: _showHelpSheet,
+                          onLoginTap: () => setState(() => _selectedTabIndex = 1),
+                          onContactTap: _showContactSheet,
+                        ),
+                        const SizedBox(height: 10),
                       ],
                     ),
-                    const Spacer(),
-                    _BottomTabs(
-                      selectedIndex: _selectedTabIndex,
-                      onHelpTap: _showHelpSheet,
-                      onLoginTap: () => setState(() => _selectedTabIndex = 1),
-                      onContactTap: _showContactSheet,
-                    ),
-                    const SizedBox(height: 8),
-                  ],
+                  ),
                 ),
               );
             },
@@ -253,21 +266,19 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Spacer(),
-        GestureDetector(
-          onTap: onLanguageTap,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Text('اختر اللغة', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-              SizedBox(width: 9),
-              Icon(Icons.language, size: 26),
-            ],
-          ),
+    return Align(
+      alignment: Alignment.centerRight,
+      child: GestureDetector(
+        onTap: onLanguageTap,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Text('اختر اللغة', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+            SizedBox(width: 8),
+            Icon(Icons.language, size: 24),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
@@ -279,13 +290,13 @@ class _MadrastiLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: const [
-        Icon(Icons.school_rounded, color: Color(0xFF56B47B), size: 58),
-        SizedBox(height: 4),
+        Icon(Icons.school_rounded, color: Color(0xFF56B47B), size: 52),
+        SizedBox(height: 3),
         Text(
           'مدرستي +',
           style: TextStyle(
             color: Color(0xFF56B47B),
-            fontSize: 33,
+            fontSize: 30,
             fontWeight: FontWeight.w800,
             letterSpacing: -0.5,
           ),
@@ -295,9 +306,9 @@ class _MadrastiLogo extends StatelessWidget {
           'Madrasti Plus',
           style: TextStyle(
             color: Color(0xFF4A4A4A),
-            fontSize: 21,
+            fontSize: 19,
             fontWeight: FontWeight.w700,
-            letterSpacing: 0.7,
+            letterSpacing: 0.6,
           ),
         ),
       ],
@@ -334,14 +345,14 @@ class _LoginForm extends StatelessWidget {
           icon: Icons.qr_code_2,
           textCapitalization: TextCapitalization.characters,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 7),
         _SanadLikeField(
           controller: emailController,
           hint: 'البريد الإلكتروني',
           icon: Icons.email_outlined,
           keyboardType: TextInputType.emailAddress,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 7),
         _SanadLikeField(
           controller: passwordController,
           hint: 'كلمة السر',
@@ -353,16 +364,17 @@ class _LoginForm extends StatelessWidget {
           ),
           onSubmitted: (_) => onLogin(),
         ),
-        const SizedBox(height: 9),
+        const SizedBox(height: 8),
         SizedBox(
           width: double.infinity,
-          height: 54,
+          height: 50,
           child: FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: _LoginScreenState._blue,
               foregroundColor: Colors.white,
+              elevation: 0,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              textStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+              textStyle: const TextStyle(fontSize: 19, fontWeight: FontWeight.w600),
             ),
             onPressed: isLoading ? null : onLogin,
             child: isLoading
@@ -399,7 +411,7 @@ class _SanadLikeField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 54,
+      height: 50,
       child: TextField(
         controller: controller,
         obscureText: obscureText,
@@ -408,25 +420,26 @@ class _SanadLikeField extends StatelessWidget {
         textInputAction: onSubmitted == null ? TextInputAction.next : TextInputAction.done,
         onSubmitted: onSubmitted,
         textAlign: TextAlign.right,
-        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w500, color: Color(0xFF1F2937)),
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Color(0xFF1F2937)),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: const TextStyle(fontSize: 17, color: Color(0xFF5C6472), fontWeight: FontWeight.w500),
-          prefixIcon: Icon(icon, color: _LoginScreenState._blue, size: 26),
+          hintStyle: const TextStyle(fontSize: 16, color: Color(0xFF5C6472), fontWeight: FontWeight.w500),
+          prefixIcon: Icon(icon, color: _LoginScreenState._blue, size: 24),
           suffixIcon: suffixIcon,
-          filled: false,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          filled: true,
+          fillColor: const Color(0xFFFBFCFF),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: _LoginScreenState._blue, width: 0.8),
+            borderSide: const BorderSide(color: _LoginScreenState._blue, width: 0.75),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: _LoginScreenState._blue, width: 0.8),
+            borderSide: const BorderSide(color: _LoginScreenState._blue, width: 0.75),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: _LoginScreenState._blue, width: 1.1),
+            borderSide: const BorderSide(color: _LoginScreenState._blue, width: 1),
           ),
         ),
       ),
@@ -443,24 +456,24 @@ class _FeatureCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 76,
-      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
+      height: 66,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
         color: _LoginScreenState._softBlue,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
-          Icon(icon, color: _LoginScreenState._blue, size: 30),
-          const SizedBox(width: 10),
+          Icon(icon, color: _LoginScreenState._blue, size: 26),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               title,
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: _LoginScreenState._blue,
-                fontSize: 16,
-                height: 1.22,
+                fontSize: 14,
+                height: 1.15,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -536,7 +549,7 @@ class _BottomTab extends StatelessWidget {
           children: [
             AnimatedContainer(
               duration: const Duration(milliseconds: 180),
-              padding: selected ? const EdgeInsets.symmetric(horizontal: 20, vertical: 7) : EdgeInsets.zero,
+              padding: selected ? const EdgeInsets.symmetric(horizontal: 18, vertical: 6) : EdgeInsets.zero,
               decoration: BoxDecoration(
                 color: selected ? const Color(0xFFEFF3FF) : Colors.transparent,
                 borderRadius: BorderRadius.circular(999),
@@ -544,15 +557,15 @@ class _BottomTab extends StatelessWidget {
               child: Icon(
                 icon,
                 color: selected ? _LoginScreenState._blue : const Color(0xFF747985),
-                size: 31,
+                size: 29,
               ),
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 4),
             Text(
               label,
               style: TextStyle(
                 color: selected ? _LoginScreenState._blue : const Color(0xFF747985),
-                fontSize: 15,
+                fontSize: 14,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
