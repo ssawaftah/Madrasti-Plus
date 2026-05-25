@@ -4,6 +4,7 @@ import '../../core/models/school.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/super_admin_service.dart';
 import 'super_admin_add_school_screen.dart';
+import 'super_admin_services_screen.dart';
 import 'widgets/platform_stats_section.dart';
 
 class SuperAdminHomeScreenV3 extends StatefulWidget {
@@ -47,6 +48,14 @@ class _SuperAdminHomeScreenV3State extends State<SuperAdminHomeScreenV3> {
     );
   }
 
+  void _openServicesScreen() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const SuperAdminServicesScreen()),
+    ).whenComplete(() {
+      if (mounted) setState(() => _selectedIndex = 0);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Directionality(
@@ -76,6 +85,7 @@ class _SuperAdminHomeScreenV3State extends State<SuperAdminHomeScreenV3> {
                   _QuickGrid(
                     totalSchools: schools.length,
                     onAddSchoolTap: _openAddSchoolScreen,
+                    onServicesTap: _openServicesScreen,
                     onTapSoon: _showSoon,
                   ),
                   const SizedBox(height: 22),
@@ -105,8 +115,9 @@ class _SuperAdminHomeScreenV3State extends State<SuperAdminHomeScreenV3> {
             selectedIndex: _selectedIndex,
             onTap: (index) {
               setState(() => _selectedIndex = index);
+              if (index == 2) _openServicesScreen();
               if (index == 3) AuthService().signOut();
-              if (index != 0 && index != 3) _showSoon();
+              if (index == 1) _showSoon();
             },
           ),
         ),
@@ -164,9 +175,15 @@ class _SectionTitle extends StatelessWidget {
 class _QuickGrid extends StatelessWidget {
   final int totalSchools;
   final VoidCallback onAddSchoolTap;
+  final VoidCallback onServicesTap;
   final VoidCallback onTapSoon;
 
-  const _QuickGrid({required this.totalSchools, required this.onAddSchoolTap, required this.onTapSoon});
+  const _QuickGrid({
+    required this.totalSchools,
+    required this.onAddSchoolTap,
+    required this.onServicesTap,
+    required this.onTapSoon,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -179,8 +196,8 @@ class _QuickGrid extends StatelessWidget {
       childAspectRatio: 0.82,
       children: [
         _QuickTile(icon: Icons.add_business_outlined, label: 'إضافة\nمدرسة', onTap: onAddSchoolTap),
-        _QuickTile(icon: Icons.school_outlined, label: 'المدارس\n$totalSchools', onTap: onTapSoon),
-        _QuickTile(icon: Icons.admin_panel_settings_outlined, label: 'إدارة\nالمدراء', onTap: onTapSoon),
+        _QuickTile(icon: Icons.school_outlined, label: 'المدارس\n$totalSchools', onTap: onServicesTap),
+        _QuickTile(icon: Icons.admin_panel_settings_outlined, label: 'إدارة\nالمدراء', onTap: onServicesTap),
         _QuickTile(icon: Icons.analytics_outlined, label: 'تقارير\nالمنصة', onTap: onTapSoon),
         _QuickTile(icon: Icons.workspace_premium_outlined, label: 'الاشتراكات\nوالخطط', onTap: onTapSoon),
         _QuickTile(icon: Icons.security_outlined, label: 'الأمان\nوالصلاحيات', onTap: onTapSoon),
