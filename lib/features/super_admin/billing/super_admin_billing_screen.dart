@@ -13,8 +13,6 @@ class SuperAdminBillingScreen extends StatefulWidget {
 class _SuperAdminBillingScreenState extends State<SuperAdminBillingScreen> {
   int _selectedTab = 0;
 
-  static const _blue = Color(0xFF2457D6);
-  static const _bg = Color(0xFFF8F8FC);
   static const _muted = Color(0xFF6B7280);
 
   final _tabs = const [
@@ -107,7 +105,6 @@ class _TabsBar extends StatelessWidget {
       height: 44,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        reverse: true,
         itemCount: tabs.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
@@ -148,7 +145,7 @@ class _BillingSummary extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           crossAxisSpacing: 10,
           mainAxisSpacing: 10,
-          childAspectRatio: 1.35,
+          childAspectRatio: 1.08,
           children: [
             _MetricCard(icon: Icons.verified_outlined, title: 'المدارس النشطة', value: schools.length.toString()),
             const _MetricCard(icon: Icons.hourglass_top_rounded, title: 'المدارس التجريبية', value: '0'),
@@ -177,22 +174,27 @@ class _MetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(color: const Color(0xFFF8F8FC), borderRadius: BorderRadius.circular(18)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Container(
-            width: 42,
-            height: 42,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(color: const Color(0xFFEFF3FF), borderRadius: BorderRadius.circular(14)),
-            child: Icon(icon, color: const Color(0xFF2457D6), size: 24),
+            child: Icon(icon, color: const Color(0xFF2457D6), size: 23),
           ),
-          const SizedBox(height: 10),
-          Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 3),
-          Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF6B7280), fontSize: 13, fontWeight: FontWeight.w700)),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 21, height: 1, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 6),
+              Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF6B7280), fontSize: 12.5, height: 1.15, fontWeight: FontWeight.w700)),
+            ],
+          ),
         ],
       ),
     );
