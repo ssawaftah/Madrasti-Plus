@@ -29,14 +29,7 @@ class SuperAdminBillingScreen extends StatefulWidget {
 
 class _SuperAdminBillingScreenState extends State<SuperAdminBillingScreen> {
   int tab = 0;
-  final tabs = const [
-    'الملخص',
-    'إضافة اشتراك',
-    'اشتراكات المدارس',
-    'التجارب المجانية',
-    'الخطط والأسعار',
-    'تنبيهات الفوترة',
-  ];
+  final tabs = const ['الملخص', 'إضافة اشتراك', 'اشتراكات المدارس', 'التجارب المجانية', 'الخطط والأسعار', 'تنبيهات الفوترة'];
 
   @override
   Widget build(BuildContext context) {
@@ -54,10 +47,7 @@ class _SuperAdminBillingScreenState extends State<SuperAdminBillingScreen> {
                 children: [
                   _Header(title: 'الاشتراكات والفوترة', onBack: () => Navigator.pop(context)),
                   const SizedBox(height: 12),
-                  const Text(
-                    'إدارة اشتراكات المدارس، الخطط، الدفعات، التجارب، وتنبيهات الفوترة.',
-                    style: TextStyle(color: _muted, fontWeight: FontWeight.w700, height: 1.5),
-                  ),
+                  const Text('إدارة اشتراكات المدارس، الخطط، الدفعات، التجارب، وتنبيهات الفوترة.', style: TextStyle(color: _muted, fontWeight: FontWeight.w700, height: 1.5)),
                   const SizedBox(height: 16),
                   _Tabs(tabs: tabs, selected: tab, onChanged: (i) => setState(() => tab = i)),
                   const SizedBox(height: 16),
@@ -85,12 +75,12 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 60,
-      child: Stack(
-        alignment: Alignment.center,
+      height: 58,
+      child: Row(
         children: [
-          Text(title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
-          Positioned(right: 0, child: IconButton(onPressed: onBack, icon: const Icon(Icons.arrow_back, size: 30))),
+          SizedBox(width: 48, child: IconButton(onPressed: onBack, icon: const Icon(Icons.arrow_back, size: 30))),
+          Expanded(child: Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900))),
+          const SizedBox(width: 48),
         ],
       ),
     );
@@ -104,29 +94,27 @@ class _Tabs extends StatelessWidget {
   const _Tabs({required this.tabs, required this.selected, required this.onChanged});
 
   @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 44,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: tabs.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (context, i) {
-          final active = selected == i;
-          return ChoiceChip(
-            selected: active,
-            showCheckmark: false,
-            label: Text(tabs[i]),
-            onSelected: (_) => onChanged(i),
-            selectedColor: _softBlue,
-            backgroundColor: _panel,
-            side: BorderSide(color: active ? _blue : _line),
-            labelStyle: TextStyle(color: active ? _blue : const Color(0xFF4B5563), fontWeight: FontWeight.w800),
-          );
-        },
-      ),
-    );
-  }
+  Widget build(BuildContext context) => SizedBox(
+        height: 44,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: tabs.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 8),
+          itemBuilder: (context, i) {
+            final active = selected == i;
+            return ChoiceChip(
+              selected: active,
+              showCheckmark: false,
+              label: Text(tabs[i]),
+              onSelected: (_) => onChanged(i),
+              selectedColor: _softBlue,
+              backgroundColor: _panel,
+              side: BorderSide(color: active ? _blue : _line),
+              labelStyle: TextStyle(color: active ? _blue : const Color(0xFF4B5563), fontWeight: FontWeight.w800),
+            );
+          },
+        ),
+      );
 }
 
 class _SummaryTab extends StatelessWidget {
@@ -135,9 +123,7 @@ class _SummaryTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    double annual = 0;
-    double paid = 0;
-    double remaining = 0;
+    double annual = 0, paid = 0, remaining = 0;
     int unpaidStudents = 0;
     for (final doc in schools) {
       final data = doc.data();
@@ -154,30 +140,28 @@ class _SummaryTab extends StatelessWidget {
         remaining += n(s['remainingAmount']);
       }
     }
-    return Column(
-      children: [
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
-          childAspectRatio: 1.12,
-          children: [
-            _Metric('المدارس النشطة', '${schools.where((s) => s.data()['status'] == 'active').length}', Icons.verified_outlined),
-            _Metric('الموقوفة', '${schools.where((s) => s.data()['status'] == 'paused').length}', Icons.pause_circle_outline),
-            _Metric('المدارس التجريبية', '${schools.where((s) => s.data()['status'] == 'trial').length}', Icons.hourglass_top_rounded),
-            _Metric('تنتهي خلال 30 يوم', '${schools.where((s) => s.data()['status'] == 'active' && daysLeft(s.data()) > 0 && daysLeft(s.data()) <= 30).length}', Icons.event_busy_outlined),
-            _Metric('الإيرادات السنوية', '${money(annual)} د.أ', Icons.calendar_month_outlined),
-            _Metric('إجمالي المدفوع', '${money(paid)} د.أ', Icons.payments_outlined),
-            _Metric('إجمالي المتبقي', '${money(remaining)} د.أ', Icons.account_balance_wallet_outlined),
-            _Metric('طلاب غير مدفوعين', '$unpaidStudents', Icons.person_off_outlined),
-          ],
-        ),
-        const SizedBox(height: 14),
-        card(const Text('قاعدة خطة حسب الطالب: كل طالب داخل المدرسة محسوب ماليًا بسعر الطالب المحدد في الخطة، ولا يوجد معفى أو غير مشترك.', style: TextStyle(fontWeight: FontWeight.w800, height: 1.5))),
-      ],
-    );
+    return Column(children: [
+      GridView.count(
+        crossAxisCount: 2,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+        childAspectRatio: 1.12,
+        children: [
+          _Metric('المدارس النشطة', '${schools.where((s) => s.data()['status'] == 'active').length}', Icons.verified_outlined),
+          _Metric('الموقوفة', '${schools.where((s) => s.data()['status'] == 'paused').length}', Icons.pause_circle_outline),
+          _Metric('المدارس التجريبية', '${schools.where((s) => s.data()['status'] == 'trial').length}', Icons.hourglass_top_rounded),
+          _Metric('تنتهي خلال 30 يوم', '${schools.where((s) => s.data()['status'] == 'active' && daysLeft(s.data()) > 0 && daysLeft(s.data()) <= 30).length}', Icons.event_busy_outlined),
+          _Metric('الإيرادات السنوية', '${money(annual)} د.أ', Icons.calendar_month_outlined),
+          _Metric('إجمالي المدفوع', '${money(paid)} د.أ', Icons.payments_outlined),
+          _Metric('إجمالي المتبقي', '${money(remaining)} د.أ', Icons.account_balance_wallet_outlined),
+          _Metric('طلاب غير مدفوعين', '$unpaidStudents', Icons.person_off_outlined),
+        ],
+      ),
+      const SizedBox(height: 14),
+      card(const Text('قاعدة خطة حسب الطالب: كل طالب داخل المدرسة محسوب ماليًا بسعر الطالب المحدد في الخطة، ويمكن تغيير حالته المالية من تبويب الطلاب.', style: TextStyle(fontWeight: FontWeight.w800, height: 1.5))),
+    ]);
   }
 }
 
@@ -215,20 +199,11 @@ class _AddSubscriptionTabState extends State<_AddSubscriptionTab> {
         final type = plan?.data()?['type'];
         final isTrial = type == 'trial';
         final isPerStudentPlan = type == 'per_student';
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text('إضافة اشتراك', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 12),
-            _PickerField(
-              'المدرسة',
-              school == null ? 'اختر المدرسة' : '${school!.data()['name'] ?? ''} - ${school!.data()['code'] ?? ''}',
-              () => pick<QueryDocumentSnapshot<Map<String, dynamic>>>(context, 'اختر المدرسة', inactive, (s) => '${s.data()['name'] ?? ''} - ${s.data()['code'] ?? ''}', school, (v) => setState(() => school = v)),
-            ),
-            _PickerField(
-              'الخطة',
-              plan?.data()?['name']?.toString() ?? 'اختر الخطة',
-              () => pick<DocumentSnapshot<Map<String, dynamic>>>(context, 'اختر الخطة', plans, planLabel, plan, (v) {
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          const Text('إضافة اشتراك', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 12),
+          _PickerField('المدرسة', school == null ? 'اختر المدرسة' : '${school!.data()['name'] ?? ''} - ${school!.data()['code'] ?? ''}', () => pick<QueryDocumentSnapshot<Map<String, dynamic>>>(context, 'اختر المدرسة', inactive, (s) => '${s.data()['name'] ?? ''} - ${s.data()['code'] ?? ''}', school, (v) => setState(() => school = v))),
+          _PickerField('الخطة', plan?.data()?['name']?.toString() ?? 'اختر الخطة', () => pick<DocumentSnapshot<Map<String, dynamic>>>(context, 'اختر الخطة', plans, planLabel, plan, (v) {
                 final p = v.data() ?? {};
                 final amount = n(p['annualPrice']);
                 setState(() {
@@ -236,15 +211,13 @@ class _AddSubscriptionTabState extends State<_AddSubscriptionTab> {
                   annual.text = p['type'] == 'trial' || p['type'] == 'per_student' ? '0' : (amount == 0 ? '' : money(amount));
                   paid.text = '0';
                 });
-              }),
-            ),
-            if (plan != null) _PlanPreview(plan!.data() ?? {}),
-            if (isPerStudentPlan) card(const Text('خطة حسب الطالب: السعر السنوي يحسب تلقائيًا من عدد الطلاب × سعر الطالب. أدخل المدفوع فقط إن وجد.', style: TextStyle(fontWeight: FontWeight.w800, height: 1.4))),
-            _TextFieldBox('المبلغ السنوي', annual, enabled: !isTrial && !isPerStudentPlan, keyboardType: TextInputType.number),
-            _TextFieldBox('المدفوع', paid, enabled: !isTrial, keyboardType: TextInputType.number),
-            SizedBox(height: 52, child: FilledButton(onPressed: saving || school == null || plan == null ? null : save, child: saving ? const CircularProgressIndicator(strokeWidth: 2) : const Text('حفظ الاشتراك'))),
-          ],
-        );
+              })),
+          if (plan != null) _PlanPreview(plan!.data() ?? {}),
+          if (isPerStudentPlan) card(const Text('خطة حسب الطالب: السعر السنوي يحسب تلقائيًا من عدد الطلاب × سعر الطالب. أدخل المدفوع فقط إن وجد.', style: TextStyle(fontWeight: FontWeight.w800, height: 1.4))),
+          _TextFieldBox('المبلغ السنوي', annual, enabled: !isTrial && !isPerStudentPlan, keyboardType: TextInputType.number),
+          _TextFieldBox('المدفوع', paid, enabled: !isTrial, keyboardType: TextInputType.number),
+          SizedBox(height: 52, child: FilledButton(onPressed: saving || school == null || plan == null ? null : save, child: saving ? const CircularProgressIndicator(strokeWidth: 2) : const Text('حفظ الاشتراك'))),
+        ]);
       },
     );
   }
@@ -306,33 +279,30 @@ class _SubscriptionsTabState extends State<_SubscriptionsTab> {
       return (q.isEmpty || name.contains(q) || code.contains(q)) && typeOk;
     }).toList();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(children: [
-          Container(width: 44, height: 44, decoration: BoxDecoration(color: _softBlue, borderRadius: BorderRadius.circular(16)), child: const Icon(Icons.receipt_long_outlined, color: _blue)),
-          const SizedBox(width: 10),
-          const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('اشتراكات المدارس', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-            SizedBox(height: 3),
-            Text('عرض مختصر للمدارس. التفاصيل الكاملة داخل صفحة عرض.', style: TextStyle(color: _muted, fontWeight: FontWeight.w700)),
-          ])),
-        ]),
-        const SizedBox(height: 14),
-        _SearchBox(search, (_) => setState(() {}), hint: 'ابحث باسم المدرسة أو رمزها...'),
-        const SizedBox(height: 10),
-        _SmallFilter(filter, {
-          'all': 'الكل ${counts['all']}',
-          'active': 'نشط ${counts['active']}',
-          'paused': 'متوقف ${counts['paused']}',
-          'due': 'متأخر ${counts['due']}',
-          'bundle': 'شاملة ${counts['bundle']}',
-          'per_student': 'حسب الطالب ${counts['per_student']}',
-        }, (v) => setState(() => filter = v)),
-        const SizedBox(height: 12),
-        if (visible.isEmpty) const _Empty('لا توجد اشتراكات مطابقة') else ...visible.map((s) => _SimpleSubscriptionCard(doc: s)),
-      ],
-    );
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Row(children: [
+        Container(width: 44, height: 44, decoration: BoxDecoration(color: _softBlue, borderRadius: BorderRadius.circular(16)), child: const Icon(Icons.receipt_long_outlined, color: _blue)),
+        const SizedBox(width: 10),
+        const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('اشتراكات المدارس', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+          SizedBox(height: 3),
+          Text('عرض مختصر للمدارس. التفاصيل الكاملة داخل صفحة عرض.', style: TextStyle(color: _muted, fontWeight: FontWeight.w700)),
+        ])),
+      ]),
+      const SizedBox(height: 14),
+      _SearchBox(search, (_) => setState(() {}), hint: 'ابحث باسم المدرسة أو رمزها...'),
+      const SizedBox(height: 10),
+      _SmallFilter(filter, {
+        'all': 'الكل ${counts['all']}',
+        'active': 'نشط ${counts['active']}',
+        'paused': 'متوقف ${counts['paused']}',
+        'due': 'متأخر ${counts['due']}',
+        'bundle': 'شاملة ${counts['bundle']}',
+        'per_student': 'حسب الطالب ${counts['per_student']}',
+      }, (v) => setState(() => filter = v)),
+      const SizedBox(height: 12),
+      if (visible.isEmpty) const _Empty('لا توجد اشتراكات مطابقة') else ...visible.map((s) => _SimpleSubscriptionCard(doc: s)),
+    ]);
   }
 }
 
@@ -347,34 +317,21 @@ class _SimpleSubscriptionCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: _line),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(.035), blurRadius: 18, offset: const Offset(0, 10))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(children: [
-            Container(
-              width: 54,
-              height: 54,
-              decoration: BoxDecoration(gradient: LinearGradient(colors: [_navy, _blue.withOpacity(.85)]), borderRadius: BorderRadius.circular(18)),
-              child: Icon(isPerStudent(data) ? Icons.groups_outlined : Icons.school_outlined, color: Colors.white, size: 28),
-            ),
-            const SizedBox(width: 12),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('${data['name'] ?? 'مدرسة'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 4),
-              Text('رمز المدرسة: ${data['code'] ?? '—'}', style: const TextStyle(color: _muted, fontWeight: FontWeight.w800)),
-            ])),
-            _Badge(subscriptionLabel(data), color),
-          ]),
-          const SizedBox(height: 14),
-          SizedBox(height: 46, child: FilledButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => SubscriptionDetailsPage(schoolId: doc.id))), icon: const Icon(Icons.visibility_outlined), label: const Text('عرض'))),
-        ],
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), border: Border.all(color: _line), boxShadow: [BoxShadow(color: Colors.black.withOpacity(.035), blurRadius: 18, offset: const Offset(0, 10))]),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Container(width: 54, height: 54, decoration: BoxDecoration(gradient: LinearGradient(colors: [_navy, _blue.withOpacity(.85)]), borderRadius: BorderRadius.circular(18)), child: Icon(isPerStudent(data) ? Icons.groups_outlined : Icons.school_outlined, color: Colors.white, size: 28)),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('${data['name'] ?? 'مدرسة'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 4),
+            Text('رمز المدرسة: ${data['code'] ?? '—'}', style: const TextStyle(color: _muted, fontWeight: FontWeight.w800)),
+          ])),
+          _Badge(subscriptionLabel(data), color),
+        ]),
+        const SizedBox(height: 14),
+        SizedBox(height: 46, child: FilledButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => SubscriptionDetailsPage(schoolId: doc.id))), icon: const Icon(Icons.visibility_outlined), label: const Text('عرض'))),
+      ]),
     );
   }
 }
@@ -387,20 +344,8 @@ class SubscriptionDetailsPage extends StatefulWidget {
   State<SubscriptionDetailsPage> createState() => _SubscriptionDetailsPageState();
 }
 
-class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage> with SingleTickerProviderStateMixin {
-  late final TabController controller;
-
-  @override
-  void initState() {
-    super.initState();
-    controller = TabController(length: 3, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
+class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage> {
+  int detailTab = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -419,42 +364,60 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage> with 
                 builder: (context, studentSnap) {
                   final students = studentSnap.data?.docs ?? [];
                   final count = students.isNotEmpty ? students.length : intFrom(data['studentsCount']);
-                  return Column(
-                    children: [
-                      Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: _Header(title: 'تفاصيل الاشتراك', onBack: () => Navigator.pop(context))),
-                      Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: _DetailsHero(data: data, studentsCount: count)),
-                      const SizedBox(height: 10),
-                      Container(
-                        height: 48,
-                        margin: const EdgeInsets.symmetric(horizontal: 16),
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(18)),
-                        child: TabBar(
-                          controller: controller,
-                          indicator: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15), boxShadow: [BoxShadow(color: Colors.black.withOpacity(.04), blurRadius: 12)]),
-                          labelColor: _blue,
-                          unselectedLabelColor: _muted,
-                          labelStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12),
-                          tabs: const [Tab(text: 'تفاصيل الاشتراك'), Tab(text: 'الطلاب'), Tab(text: 'الإعدادات')],
-                        ),
-                      ),
-                      Expanded(
-                        child: TabBarView(
-                          controller: controller,
-                          children: [
-                            _SubscriptionDashboardTab(data: data, students: students),
-                            _SubscriptionStudentsTab(data: data, students: students),
-                            _SubscriptionSettingsTab(schoolId: widget.schoolId, data: data, students: students),
-                          ],
-                        ),
-                      ),
-                    ],
-                  );
+                  return Column(children: [
+                    Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: _Header(title: 'تفاصيل الاشتراك', onBack: () => Navigator.pop(context))),
+                    Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: _DetailsHero(data: data, studentsCount: count)),
+                    const SizedBox(height: 12),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: _DetailTabs(selected: detailTab, onChanged: (i) => setState(() => detailTab = i)),
+                    ),
+                    Expanded(
+                      child: IndexedStack(index: detailTab, children: [
+                        _SubscriptionDashboardTab(data: data, students: students),
+                        _SubscriptionStudentsTab(schoolId: widget.schoolId, data: data, students: students),
+                        _SubscriptionSettingsTab(schoolId: widget.schoolId, data: data, students: students),
+                      ]),
+                    ),
+                  ]);
                 },
               );
             },
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _DetailTabs extends StatelessWidget {
+  final int selected;
+  final ValueChanged<int> onChanged;
+  const _DetailTabs({required this.selected, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final labels = const ['تفاصيل الاشتراك', 'الطلاب', 'الإعدادات'];
+    return Container(
+      padding: const EdgeInsets.all(5),
+      decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(20), border: Border.all(color: _line)),
+      child: Row(
+        children: List.generate(labels.length, (i) {
+          final active = selected == i;
+          return Expanded(
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () => onChanged(i),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: active ? Colors.white : Colors.transparent, borderRadius: BorderRadius.circular(16), boxShadow: active ? [BoxShadow(color: Colors.black.withOpacity(.055), blurRadius: 12, offset: const Offset(0, 5))] : []),
+                child: Text(labels[i], maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: active ? _blue : _muted, fontWeight: FontWeight.w900, fontSize: 12.5)),
+              ),
+            ),
+          );
+        }),
       ),
     );
   }
@@ -477,7 +440,7 @@ class _DetailsHero extends StatelessWidget {
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('${data['name'] ?? 'مدرسة'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900)),
           const SizedBox(height: 4),
-          Text('رمز: ${data['code'] ?? '—'} • ${s['planName'] ?? 'اشتراك'} • $studentsCount طالب', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w800)),
+          Text('رمز: ${data['code'] ?? '—'} • ${s['planName'] ?? 'اشتراك'} • $studentsCount طالب', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w800)),
         ])),
         _Badge(subscriptionLabel(data), Colors.white),
       ]),
@@ -495,7 +458,7 @@ class _SubscriptionDashboardTab extends StatelessWidget {
     final s = sub(data);
     final count = students.isNotEmpty ? students.length : intFrom(data['studentsCount']);
     final per = isPerStudent(data);
-    final stats = per ? perStudentStats(data, count) : null;
+    final stats = per ? perStudentStatsFromStudents(data, students) : null;
     final annual = per ? stats!.total : n(s['annualAmount']);
     final paid = per ? stats!.paidAmount : n(s['paidAmount']);
     final remaining = per ? stats!.remaining : n(s['remainingAmount']);
@@ -503,44 +466,42 @@ class _SubscriptionDashboardTab extends StatelessWidget {
     final paidStudents = per ? stats!.paidStudents : count;
     final unpaidStudents = per ? stats!.unpaidStudents : 0;
     final progress = annual <= 0 ? 0.0 : (paid / annual).clamp(0.0, 1.0).toDouble();
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
-          childAspectRatio: 1.24,
-          children: [
-            _Metric('نوع الخطة', per ? 'حسب الطالب' : 'شاملة', Icons.category_outlined),
-            _Metric('الخطة', '${s['planName'] ?? '—'}', Icons.workspace_premium_outlined),
-            _Metric('تاريخ البدء', date(s['startDate']), Icons.event_available_outlined),
-            _Metric('تاريخ النهاية', date(s['endDate']), Icons.event_busy_outlined),
-            _Metric('عدد الطلاب', '$count', Icons.groups_outlined),
-            _Metric('سعر الطالب', per ? '${money(price)} د.أ' : '${money(n(s['pricePerStudent']))} د.أ', Icons.sell_outlined),
-            _Metric('المستحق', '${money(annual)} د.أ', Icons.receipt_long_outlined),
-            _Metric('مدفوعين', '$paidStudents', Icons.verified_user_outlined),
-            _Metric('غير المدفوعين', '$unpaidStudents', Icons.person_off_outlined),
-            _Metric('المتبقي', '${money(remaining)} د.أ', Icons.account_balance_wallet_outlined),
-          ],
-        ),
+    return ListView(padding: const EdgeInsets.all(16), children: [
+      GridView.count(
+        crossAxisCount: 2,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+        childAspectRatio: 1.24,
+        children: [
+          _Metric('نوع الخطة', per ? 'حسب الطالب' : 'شاملة', Icons.category_outlined),
+          _Metric('الخطة', '${s['planName'] ?? '—'}', Icons.workspace_premium_outlined),
+          _Metric('تاريخ البدء', date(s['startDate']), Icons.event_available_outlined),
+          _Metric('تاريخ النهاية', date(s['endDate']), Icons.event_busy_outlined),
+          _Metric('عدد الطلاب', '$count', Icons.groups_outlined),
+          _Metric('سعر الطالب', per ? '${money(price)} د.أ' : '${money(n(s['pricePerStudent']))} د.أ', Icons.sell_outlined),
+          _Metric('المستحق', '${money(annual)} د.أ', Icons.receipt_long_outlined),
+          _Metric('مدفوعين', '$paidStudents', Icons.verified_user_outlined),
+          _Metric('غير المدفوعين', '$unpaidStudents', Icons.person_off_outlined),
+          _Metric('المتبقي', '${money(remaining)} د.أ', Icons.account_balance_wallet_outlined),
+        ],
+      ),
+      const SizedBox(height: 12),
+      card(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        _ProgressBlock(title: 'نسبة التحصيل', value: progress, text: '${(progress * 100).toStringAsFixed(0)}%'),
         const SizedBox(height: 12),
-        card(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          _ProgressBlock(title: 'نسبة التحصيل', value: progress, text: '${(progress * 100).toStringAsFixed(0)}%'),
-          const SizedBox(height: 12),
-          Text(per ? 'الحسبة: عدد الطلاب × سعر الطالب، والمدفوعين = المدفوع ÷ سعر الطالب.' : 'الخطة الشاملة لا تعتمد على دفع كل طالب منفردًا، وتظهر حالة الطلاب ضمن الخطة.', style: const TextStyle(color: _muted, fontWeight: FontWeight.w800, height: 1.4)),
-        ])),
-      ],
-    );
+        Text(per ? 'الحسبة: كل طالب يمكن تعيينه مدفوع أو غير مدفوع من تبويب الطلاب.' : 'الخطة الشاملة لا تعتمد على دفع كل طالب منفردًا.', style: const TextStyle(color: _muted, fontWeight: FontWeight.w800, height: 1.4)),
+      ])),
+    ]);
   }
 }
 
 class _SubscriptionStudentsTab extends StatefulWidget {
+  final String schoolId;
   final Map<String, dynamic> data;
   final List<QueryDocumentSnapshot<Map<String, dynamic>>> students;
-  const _SubscriptionStudentsTab({required this.data, required this.students});
+  const _SubscriptionStudentsTab({required this.schoolId, required this.data, required this.students});
 
   @override
   State<_SubscriptionStudentsTab> createState() => _SubscriptionStudentsTabState();
@@ -549,6 +510,7 @@ class _SubscriptionStudentsTab extends StatefulWidget {
 class _SubscriptionStudentsTabState extends State<_SubscriptionStudentsTab> {
   String filter = 'all';
   final search = TextEditingController();
+  bool updating = false;
 
   @override
   void dispose() {
@@ -559,48 +521,108 @@ class _SubscriptionStudentsTabState extends State<_SubscriptionStudentsTab> {
   @override
   Widget build(BuildContext context) {
     final per = isPerStudent(widget.data);
-    final stats = per ? perStudentStats(widget.data, widget.students.length) : null;
+    final fallbackStats = per ? perStudentStats(widget.data, widget.students.length) : null;
     final q = search.text.trim().toLowerCase();
     final rows = <_StudentRow>[];
     for (var i = 0; i < widget.students.length; i++) {
-      final st = widget.students[i].data();
-      final paid = per ? i < stats!.paidStudents : true;
-      final row = _StudentRow(name: studentName(st), grade: studentGrade(st), section: studentSection(st), paid: paid);
+      final doc = widget.students[i];
+      final st = doc.data();
+      final fallbackPaid = per ? i < fallbackStats!.paidStudents : true;
+      final paid = per ? studentIsPaid(st, fallbackPaid: fallbackPaid) : true;
+      final row = _StudentRow(id: doc.id, name: studentName(st), grade: studentGrade(st), section: studentSection(st), paid: paid);
       final okSearch = q.isEmpty || row.name.toLowerCase().contains(q) || row.grade.toLowerCase().contains(q) || row.section.toLowerCase().contains(q);
       final okFilter = filter == 'all' || (filter == 'paid' && paid) || (filter == 'unpaid' && !paid);
       if (okSearch && okFilter) rows.add(row);
     }
     rows.sort((a, b) => a.paid == b.paid ? a.name.compareTo(b.name) : a.paid ? 1 : -1);
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _SearchBox(search, (_) => setState(() {}), hint: 'ابحث باسم الطالب أو الصف أو الشعبة...'),
-        const SizedBox(height: 10),
-        _SmallFilter(filter, {'all': 'الكل ${widget.students.length}', 'unpaid': 'غير مدفوع ${rows.where((r) => !r.paid).length}', 'paid': 'مدفوع ${rows.where((r) => r.paid).length}'}, (v) => setState(() => filter = v)),
-        const SizedBox(height: 12),
-        if (rows.isEmpty)
-          const _Empty('لا توجد بيانات طلاب مطابقة')
-        else
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              headingTextStyle: const TextStyle(fontWeight: FontWeight.w900, color: _muted),
-              dataTextStyle: const TextStyle(fontWeight: FontWeight.w800, color: Colors.black),
-              columns: const [DataColumn(label: Text('الطالب')), DataColumn(label: Text('الصف')), DataColumn(label: Text('الشعبة')), DataColumn(label: Text('الحالة'))],
-              rows: rows.map((r) => DataRow(cells: [DataCell(Text(r.name)), DataCell(Text(r.grade)), DataCell(Text(r.section)), DataCell(_Badge(r.paid ? 'مدفوع' : 'غير مدفوع', r.paid ? _success : _danger))])).toList(),
-            ),
+
+    return ListView(padding: const EdgeInsets.all(16), children: [
+      _SearchBox(search, (_) => setState(() {}), hint: 'ابحث باسم الطالب أو الصف أو الشعبة...'),
+      const SizedBox(height: 10),
+      _SmallFilter(filter, {'all': 'الكل ${widget.students.length}', 'unpaid': 'غير مدفوع ${rows.where((r) => !r.paid).length}', 'paid': 'مدفوع ${rows.where((r) => r.paid).length}'}, (v) => setState(() => filter = v)),
+      const SizedBox(height: 12),
+      if (!per) card(const Text('هذه خطة شاملة، لذلك لا توجد حالة دفع مستقلة لكل طالب. كل الطلاب ضمن الاشتراك.', style: TextStyle(fontWeight: FontWeight.w800, color: _muted))),
+      if (rows.isEmpty)
+        const _Empty('لا توجد بيانات طلاب مطابقة')
+      else
+        ...rows.map((r) => _StudentBillingCard(row: r, enabled: per && !updating, onToggle: () => toggleStudentStatus(r))),
+    ]);
+  }
+
+  Future<void> toggleStudentStatus(_StudentRow row) async {
+    if (!isPerStudent(widget.data)) return;
+    setState(() => updating = true);
+    try {
+      final newPaid = !row.paid;
+      await _db.collection('schools').doc(widget.schoolId).collection('students').doc(row.id).update({
+        'billingStatus': newPaid ? 'paid' : 'unpaid',
+        'billingUpdatedAt': DateTime.now().toIso8601String(),
+      });
+      final paidCount = widget.students.where((doc) {
+        if (doc.id == row.id) return newPaid;
+        final index = widget.students.indexOf(doc);
+        final fallback = index < perStudentStats(widget.data, widget.students.length).paidStudents;
+        return studentIsPaid(doc.data(), fallbackPaid: fallback);
+      }).length;
+      final price = perStudentPrice(widget.data);
+      final annual = widget.students.length * price;
+      final paidAmount = paidCount * price;
+      await _db.collection('schools').doc(widget.schoolId).update({
+        'studentsCount': widget.students.length,
+        'subscription.annualAmount': annual,
+        'subscription.paidAmount': paidAmount,
+        'subscription.remainingAmount': positive(annual - paidAmount),
+      });
+      await addBillingLog(widget.schoolId, newPaid ? 'تسوية طالب كمدفوع' : 'تحديد طالب كغير مدفوع', '${row.name} أصبح ${newPaid ? 'مدفوع' : 'غير مدفوع'}');
+      if (mounted) snack(context, 'تم تحديث حالة الطالب');
+    } finally {
+      if (mounted) setState(() => updating = false);
+    }
+  }
+}
+
+class _StudentBillingCard extends StatelessWidget {
+  final _StudentRow row;
+  final bool enabled;
+  final VoidCallback onToggle;
+  const _StudentBillingCard({required this.row, required this.enabled, required this.onToggle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: _line)),
+      child: Row(children: [
+        Container(width: 42, height: 42, decoration: BoxDecoration(color: row.paid ? _success.withOpacity(.1) : _danger.withOpacity(.1), borderRadius: BorderRadius.circular(14)), child: Icon(row.paid ? Icons.verified_user_outlined : Icons.person_off_outlined, color: row.paid ? _success : _danger)),
+        const SizedBox(width: 10),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(row.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+          const SizedBox(height: 3),
+          Text('الصف: ${row.grade} • الشعبة: ${row.section}', style: const TextStyle(color: _muted, fontWeight: FontWeight.w700, fontSize: 12)),
+        ])),
+        const SizedBox(width: 8),
+        InkWell(
+          onTap: enabled ? onToggle : null,
+          borderRadius: BorderRadius.circular(99),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            decoration: BoxDecoration(color: row.paid ? _success.withOpacity(.1) : _danger.withOpacity(.1), borderRadius: BorderRadius.circular(99)),
+            child: Text(row.paid ? 'مدفوع' : 'غير مدفوع', style: TextStyle(color: row.paid ? _success : _danger, fontWeight: FontWeight.w900, fontSize: 12)),
           ),
-      ],
+        ),
+      ]),
     );
   }
 }
 
 class _StudentRow {
+  final String id;
   final String name;
   final String grade;
   final String section;
   final bool paid;
-  const _StudentRow({required this.name, required this.grade, required this.section, required this.paid});
+  const _StudentRow({required this.id, required this.name, required this.grade, required this.section, required this.paid});
 }
 
 class _SubscriptionSettingsTab extends StatefulWidget {
@@ -628,43 +650,38 @@ class _SubscriptionSettingsTabState extends State<_SubscriptionSettingsTab> {
   @override
   Widget build(BuildContext context) {
     final paused = widget.data['status'] == 'paused';
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _SettingsBlock(title: 'تجديد الاشتراك', icon: Icons.refresh_rounded, children: [
-          _TextFieldBox('مدة التجديد بالأشهر', months, keyboardType: TextInputType.number),
-          SizedBox(height: 50, child: FilledButton.icon(onPressed: saving ? null : renew, icon: const Icon(Icons.refresh_rounded), label: const Text('تجديد الاشتراك'))),
-        ]),
-        _SettingsBlock(title: 'تغيير الخطة', icon: Icons.swap_horiz_rounded, children: [
-          StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-            stream: _db.collection('billing_plans').where('isActive', isEqualTo: true).snapshots(),
-            builder: (context, snapshot) {
-              final plans = (snapshot.data?.docs ?? []).where((p) => p.data()['type'] != 'trial').toList();
-              return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                _PickerField('الخطة الجديدة', selectedPlan == null ? 'اختر الخطة الجديدة' : '${selectedPlan!.data()?['name'] ?? ''}', () {
-                  pick<DocumentSnapshot<Map<String, dynamic>>>(context, 'اختر الخطة الجديدة', plans, planLabel, selectedPlan, (v) => setState(() {
-                        selectedPlan = v;
-                        planDifference = calculatePlanDifference(widget.data, v.data() ?? {}, widget.students.length);
-                      }));
-                }),
-                if (selectedPlan != null) card(Text(planDifference >= 0 ? 'فرق الترقية المطلوب: ${money(planDifference)} د.أ' : 'رصيد لصالح المدرسة: ${money(planDifference.abs())} د.أ', style: TextStyle(color: planDifference >= 0 ? _warning : _success, fontWeight: FontWeight.w900))),
-                SizedBox(height: 50, child: OutlinedButton.icon(onPressed: selectedPlan == null || saving ? null : changePlan, icon: const Icon(Icons.swap_horiz_rounded), label: const Text('تطبيق تغيير الخطة'))),
-              ]);
-            },
-          ),
-        ]),
-        _SettingsBlock(title: 'تصدير تقرير الطلاب', icon: Icons.file_download_outlined, children: [
-          const Text('يتم ترتيب التقرير بحيث يظهر غير المدفوعين أولًا ثم المدفوعين.', style: TextStyle(color: _muted, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 10),
-          SizedBox(height: 50, child: OutlinedButton.icon(onPressed: exportReport, icon: const Icon(Icons.file_download_outlined), label: const Text('تصدير / نسخ التقرير'))),
-        ]),
-        _SettingsBlock(title: paused ? 'استئناف الاشتراك' : 'إيقاف الاشتراك', icon: paused ? Icons.play_circle_outline : Icons.pause_circle_outline, danger: !paused, children: [
-          Text(paused ? 'الاشتراك متوقف حاليًا. يمكن استئنافه بدون إنشاء اشتراك جديد.' : 'عند الإيقاف لا يمكن إنشاء اشتراك جديد للمدرسة، فقط استئناف الاشتراك الحالي.', style: const TextStyle(color: _muted, fontWeight: FontWeight.w800, height: 1.4)),
-          const SizedBox(height: 10),
-          SizedBox(height: 50, child: OutlinedButton.icon(onPressed: saving ? null : (paused ? resumeSubscription : pauseSubscription), icon: Icon(paused ? Icons.play_circle_outline : Icons.pause_circle_outline), label: Text(paused ? 'استئناف الاشتراك' : 'إيقاف الاشتراك'), style: OutlinedButton.styleFrom(foregroundColor: paused ? _success : _danger))),
-        ]),
-      ],
-    );
+    return ListView(padding: const EdgeInsets.all(16), children: [
+      _SettingsBlock(title: 'تجديد الاشتراك', icon: Icons.refresh_rounded, children: [
+        _TextFieldBox('مدة التجديد بالأشهر', months, keyboardType: TextInputType.number),
+        SizedBox(height: 50, child: FilledButton.icon(onPressed: saving ? null : renew, icon: const Icon(Icons.refresh_rounded), label: const Text('تجديد الاشتراك'))),
+      ]),
+      _SettingsBlock(title: 'تغيير الخطة', icon: Icons.swap_horiz_rounded, children: [
+        StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: _db.collection('billing_plans').where('isActive', isEqualTo: true).snapshots(),
+          builder: (context, snapshot) {
+            final plans = (snapshot.data?.docs ?? []).where((p) => p.data()['type'] != 'trial').toList();
+            return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              _PickerField('الخطة الجديدة', selectedPlan == null ? 'اختر الخطة الجديدة' : '${selectedPlan!.data()?['name'] ?? ''}', () => pick<DocumentSnapshot<Map<String, dynamic>>>(context, 'اختر الخطة الجديدة', plans, planLabel, selectedPlan, (v) => setState(() {
+                    selectedPlan = v;
+                    planDifference = calculatePlanDifference(widget.data, v.data() ?? {}, widget.students.length);
+                  }))),
+              if (selectedPlan != null) card(Text(planDifference >= 0 ? 'فرق الترقية المطلوب: ${money(planDifference)} د.أ' : 'رصيد لصالح المدرسة: ${money(planDifference.abs())} د.أ', style: TextStyle(color: planDifference >= 0 ? _warning : _success, fontWeight: FontWeight.w900))),
+              SizedBox(height: 50, child: OutlinedButton.icon(onPressed: selectedPlan == null || saving ? null : changePlan, icon: const Icon(Icons.swap_horiz_rounded), label: const Text('تطبيق تغيير الخطة'))),
+            ]);
+          },
+        ),
+      ]),
+      _SettingsBlock(title: 'تصدير تقرير الطلاب', icon: Icons.file_download_outlined, children: [
+        const Text('يتم ترتيب التقرير بحيث يظهر غير المدفوعين أولًا ثم المدفوعين.', style: TextStyle(color: _muted, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 10),
+        SizedBox(height: 50, child: OutlinedButton.icon(onPressed: exportReport, icon: const Icon(Icons.file_download_outlined), label: const Text('تصدير / نسخ التقرير'))),
+      ]),
+      _SettingsBlock(title: paused ? 'استئناف الاشتراك' : 'إيقاف الاشتراك', icon: paused ? Icons.play_circle_outline : Icons.pause_circle_outline, danger: !paused, children: [
+        Text(paused ? 'الاشتراك متوقف حاليًا. يمكن استئنافه بدون إنشاء اشتراك جديد.' : 'عند الإيقاف لا يمكن إنشاء اشتراك جديد للمدرسة، فقط استئناف الاشتراك الحالي.', style: const TextStyle(color: _muted, fontWeight: FontWeight.w800, height: 1.4)),
+        const SizedBox(height: 10),
+        SizedBox(height: 50, child: OutlinedButton.icon(onPressed: saving ? null : (paused ? resumeSubscription : pauseSubscription), icon: Icon(paused ? Icons.play_circle_outline : Icons.pause_circle_outline), label: Text(paused ? 'استئناف الاشتراك' : 'إيقاف الاشتراك'), style: OutlinedButton.styleFrom(foregroundColor: paused ? _success : _danger))),
+      ]),
+    ]);
   }
 
   Future<void> renew() async {
@@ -713,11 +730,12 @@ class _SubscriptionSettingsTabState extends State<_SubscriptionSettingsTab> {
 
   Future<void> exportReport() async {
     final per = isPerStudent(widget.data);
-    final stats = per ? perStudentStats(widget.data, widget.students.length) : null;
+    final fallbackStats = per ? perStudentStats(widget.data, widget.students.length) : null;
     final rows = <_StudentRow>[];
     for (var i = 0; i < widget.students.length; i++) {
       final st = widget.students[i].data();
-      rows.add(_StudentRow(name: studentName(st), grade: studentGrade(st), section: studentSection(st), paid: per ? i < stats!.paidStudents : true));
+      final paid = per ? studentIsPaid(st, fallbackPaid: i < fallbackStats!.paidStudents) : true;
+      rows.add(_StudentRow(id: widget.students[i].id, name: studentName(st), grade: studentGrade(st), section: studentSection(st), paid: paid));
     }
     rows.sort((a, b) => a.paid == b.paid ? a.name.compareTo(b.name) : a.paid ? 1 : -1);
     final buffer = StringBuffer('الاسم,الصف,الشعبة,الحالة\n');
@@ -759,13 +777,11 @@ class _SettingsBlock extends StatelessWidget {
   const _SettingsBlock({required this.title, required this.icon, required this.children, this.danger = false});
 
   @override
-  Widget build(BuildContext context) {
-    return card(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Row(children: [Icon(icon, color: danger ? _danger : _blue), const SizedBox(width: 8), Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: danger ? _danger : Colors.black))]),
-      const SizedBox(height: 12),
-      ...children,
-    ]));
-  }
+  Widget build(BuildContext context) => card(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [Icon(icon, color: danger ? _danger : _blue), const SizedBox(width: 8), Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: danger ? _danger : Colors.black))]),
+        const SizedBox(height: 12),
+        ...children,
+      ]));
 }
 
 class _TrialsTab extends StatefulWidget {
@@ -796,23 +812,20 @@ class _TrialsTabState extends State<_TrialsTab> {
       final code = '${data['code'] ?? ''}'.toLowerCase();
       return (q.isEmpty || name.contains(q) || code.contains(q)) && (filter == 'all' || trialState(data) == filter);
     }).toList();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const Text('التجارب المجانية', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-        const SizedBox(height: 12),
-        _SearchBox(search, (_) => setState(() {}), hint: 'ابحث باسم المدرسة أو رمزها...'),
-        const SizedBox(height: 10),
-        _SmallFilter(filter, {
-          'all': 'الكل ${docs.length}',
-          'active': 'فعال ${docs.where((x) => trialState(x.data()) == 'active').length}',
-          'ending': 'قريب الانتهاء ${docs.where((x) => trialState(x.data()) == 'ending').length}',
-          'expired': 'منتهي ${docs.where((x) => trialState(x.data()) == 'expired').length}',
-        }, (v) => setState(() => filter = v)),
-        const SizedBox(height: 12),
-        if (docs.isEmpty) const _Empty('لا توجد مدارس في التجربة المجانية') else if (visible.isEmpty) const _Empty('لا توجد نتائج مطابقة') else ...visible.map((doc) => _TrialCard(doc: doc)),
-      ],
-    );
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      const Text('التجارب المجانية', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+      const SizedBox(height: 12),
+      _SearchBox(search, (_) => setState(() {}), hint: 'ابحث باسم المدرسة أو رمزها...'),
+      const SizedBox(height: 10),
+      _SmallFilter(filter, {
+        'all': 'الكل ${docs.length}',
+        'active': 'فعال ${docs.where((x) => trialState(x.data()) == 'active').length}',
+        'ending': 'قريب الانتهاء ${docs.where((x) => trialState(x.data()) == 'ending').length}',
+        'expired': 'منتهي ${docs.where((x) => trialState(x.data()) == 'expired').length}',
+      }, (v) => setState(() => filter = v)),
+      const SizedBox(height: 12),
+      if (docs.isEmpty) const _Empty('لا توجد مدارس في التجربة المجانية') else if (visible.isEmpty) const _Empty('لا توجد نتائج مطابقة') else ...visible.map((doc) => _TrialCard(doc: doc)),
+    ]);
   }
 }
 
@@ -842,18 +855,16 @@ class _PlansTab extends StatelessWidget {
   const _PlansTab();
 
   @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: _db.collection('billing_plans').snapshots(),
-      builder: (context, snapshot) {
-        final docs = snapshot.data?.docs ?? [];
-        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Row(children: [const Expanded(child: Text('الخطط والأسعار', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900))), IconButton(onPressed: () => openPlanForm(context), icon: const Icon(Icons.add_circle, color: _blue, size: 32))]),
-          if (docs.isEmpty) Column(children: [const _Empty('لا توجد خطط بعد'), SizedBox(width: double.infinity, height: 50, child: FilledButton(onPressed: () => seedPlans(context), child: const Text('إنشاء الخطط الافتراضية')))]) else ...docs.map((doc) => _PlanCard(doc: doc)),
-        ]);
-      },
-    );
-  }
+  Widget build(BuildContext context) => StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: _db.collection('billing_plans').snapshots(),
+        builder: (context, snapshot) {
+          final docs = snapshot.data?.docs ?? [];
+          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Row(children: [const Expanded(child: Text('الخطط والأسعار', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900))), IconButton(onPressed: () => openPlanForm(context), icon: const Icon(Icons.add_circle, color: _blue, size: 32))]),
+            if (docs.isEmpty) Column(children: [const _Empty('لا توجد خطط بعد'), SizedBox(width: double.infinity, height: 50, child: FilledButton(onPressed: () => seedPlans(context), child: const Text('إنشاء الخطط الافتراضية')))]) else ...docs.map((doc) => _PlanCard(doc: doc)),
+          ]);
+        },
+      );
 }
 
 class _PlanCard extends StatelessWidget {
@@ -953,29 +964,27 @@ class _PlanFormState extends State<_PlanForm> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(18, 8, 18, MediaQuery.of(context).viewInsets.bottom + 18),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-            Text(widget.doc == null ? 'إضافة خطة' : 'تعديل خطة', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 12),
-            _TextFieldBox('اسم الخطة', name, keyboardType: TextInputType.text),
-            _PickerField('نوع الخطة', typeName(type), () => pick<String>(context, 'نوع الخطة', const ['trial', 'bundle', 'custom_bundle', 'per_student'], typeName, type, (v) => setState(() => type = v))),
-            _TextFieldBox('المدة بالأشهر', duration, keyboardType: TextInputType.number),
-            _TextFieldBox('طريقة التسعير', method, keyboardType: TextInputType.text),
-            _TextFieldBox('سعر الطالب', price, keyboardType: TextInputType.number),
-            _TextFieldBox('حد الطلاب', limit, keyboardType: TextInputType.number),
-            _TextFieldBox('السعر السنوي', annual, enabled: type != 'per_student', keyboardType: TextInputType.number),
-            SwitchListTile(value: active, onChanged: (v) => setState(() => active = v), title: const Text('الخطة مفعلة', style: TextStyle(fontWeight: FontWeight.w800)), activeColor: _blue, contentPadding: EdgeInsets.zero),
-            SizedBox(height: 50, child: FilledButton(onPressed: save, child: const Text('حفظ الخطة'))),
-          ]),
+  Widget build(BuildContext context) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(18, 8, 18, MediaQuery.of(context).viewInsets.bottom + 18),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+              Text(widget.doc == null ? 'إضافة خطة' : 'تعديل خطة', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 12),
+              _TextFieldBox('اسم الخطة', name, keyboardType: TextInputType.text),
+              _PickerField('نوع الخطة', typeName(type), () => pick<String>(context, 'نوع الخطة', const ['trial', 'bundle', 'custom_bundle', 'per_student'], typeName, type, (v) => setState(() => type = v))),
+              _TextFieldBox('المدة بالأشهر', duration, keyboardType: TextInputType.number),
+              _TextFieldBox('طريقة التسعير', method, keyboardType: TextInputType.text),
+              _TextFieldBox('سعر الطالب', price, keyboardType: TextInputType.number),
+              _TextFieldBox('حد الطلاب', limit, keyboardType: TextInputType.number),
+              _TextFieldBox('السعر السنوي', annual, enabled: type != 'per_student', keyboardType: TextInputType.number),
+              SwitchListTile(value: active, onChanged: (v) => setState(() => active = v), title: const Text('الخطة مفعلة', style: TextStyle(fontWeight: FontWeight.w800)), activeColor: _blue, contentPadding: EdgeInsets.zero),
+              SizedBox(height: 50, child: FilledButton(onPressed: save, child: const Text('حفظ الخطة'))),
+            ]),
+          ),
         ),
-      ),
-    );
-  }
+      );
 
   Future<void> save() async {
     final data = {
@@ -1005,17 +1014,15 @@ class _Metric extends StatelessWidget {
   const _Metric(this.title, this.value, this.icon);
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(18)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Icon(icon, color: _blue),
-        Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
-        Text(title, style: const TextStyle(color: _muted, fontWeight: FontWeight.w700)),
-      ]),
-    );
-  }
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(18)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Icon(icon, color: _blue),
+          Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+          Text(title, style: const TextStyle(color: _muted, fontWeight: FontWeight.w700)),
+        ]),
+      );
 }
 
 class _ProgressBlock extends StatelessWidget {
@@ -1028,15 +1035,9 @@ class _ProgressBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     final safeValue = value.clamp(0.0, 1.0).toDouble();
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Row(children: [
-        Expanded(child: Text(title, style: const TextStyle(color: _muted, fontWeight: FontWeight.w800))),
-        Text(text, style: const TextStyle(fontWeight: FontWeight.w900)),
-      ]),
+      Row(children: [Expanded(child: Text(title, style: const TextStyle(color: _muted, fontWeight: FontWeight.w800))), Text(text, style: const TextStyle(fontWeight: FontWeight.w900))]),
       const SizedBox(height: 7),
-      ClipRRect(
-        borderRadius: BorderRadius.circular(99),
-        child: LinearProgressIndicator(value: safeValue, minHeight: 8, backgroundColor: _line, color: _blue),
-      ),
+      ClipRRect(borderRadius: BorderRadius.circular(99), child: LinearProgressIndicator(value: safeValue, minHeight: 8, backgroundColor: _line, color: _blue)),
     ]);
   }
 }
@@ -1050,13 +1051,7 @@ class _SmallFilter extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SizedBox(
         height: 42,
-        child: ListView(
-          scrollDirection: Axis.horizontal,
-          children: items.entries.map((e) => Padding(
-            padding: const EdgeInsets.only(left: 8),
-            child: ChoiceChip(selected: selected == e.key, showCheckmark: false, label: Text(e.value), onSelected: (_) => onSelect(e.key), selectedColor: _softBlue),
-          )).toList(),
-        ),
+        child: ListView(scrollDirection: Axis.horizontal, children: items.entries.map((e) => Padding(padding: const EdgeInsets.only(left: 8), child: ChoiceChip(selected: selected == e.key, showCheckmark: false, label: Text(e.value), onSelected: (_) => onSelect(e.key), selectedColor: _softBlue))).toList()),
       );
 }
 
@@ -1069,13 +1064,7 @@ class _PickerField extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(bottom: 14),
-        child: InkWell(
-          onTap: onTap,
-          child: InputDecorator(
-            decoration: InputDecoration(labelText: label, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))),
-            child: Row(children: [Expanded(child: Text(value)), const Icon(Icons.keyboard_arrow_down_rounded)]),
-          ),
-        ),
+        child: InkWell(onTap: onTap, child: InputDecorator(decoration: InputDecoration(labelText: label, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12))), child: Row(children: [Expanded(child: Text(value)), const Icon(Icons.keyboard_arrow_down_rounded)]))),
       );
 }
 
@@ -1108,7 +1097,7 @@ class _PlanPreview extends StatelessWidget {
   const _PlanPreview(this.data);
 
   @override
-  Widget build(BuildContext context) => card(Wrap(spacing: 8, runSpacing: 8, children: [_Chip('المدة: ${data['durationMonths'] ?? 0} شهر'), _Chip('الحد: ${data['studentLimit'] ?? 0}'), _Chip('سعر الطالب: ${data['pricePerStudent'] ?? 0}')]));
+  Widget build(BuildContext context) => card(Wrap(spacing: 8, runSpacing: 8, children: [_Chip('المدة: ${data['durationMonths'] ?? 0} شهر'), _Chip('الحد: ${data['studentLimit'] ?? 0}'), _Chip('سعر الطالب: ${data['pricePerStudent'] ?? 0}')])) ;
 }
 
 class _Badge extends StatelessWidget {
@@ -1155,6 +1144,12 @@ Widget card(Widget child) => Container(margin: const EdgeInsets.only(bottom: 12)
 Map<String, dynamic> sub(Map<String, dynamic> data) => data['subscription'] is Map<String, dynamic> ? Map<String, dynamic>.from(data['subscription'] as Map<String, dynamic>) : <String, dynamic>{};
 bool isPerStudent(Map<String, dynamic> data) => sub(data)['planType'] == 'per_student';
 double perStudentPrice(Map<String, dynamic> data) => n(sub(data)['pricePerStudent']) == 0 ? 20 : n(sub(data)['pricePerStudent']);
+bool studentIsPaid(Map<String, dynamic> data, {required bool fallbackPaid}) {
+  final raw = '${data['billingStatus'] ?? data['paymentStatus'] ?? data['billing_status'] ?? ''}'.toLowerCase();
+  if (raw == 'paid' || raw == 'مدفوع') return true;
+  if (raw == 'unpaid' || raw == 'غير مدفوع') return false;
+  return fallbackPaid;
+}
 PerStudentStats perStudentStats(Map<String, dynamic> data, int count) {
   final price = perStudentPrice(data);
   final total = count * price;
@@ -1162,6 +1157,15 @@ PerStudentStats perStudentStats(Map<String, dynamic> data, int count) {
   final paidStudents = clampInt(price <= 0 ? 0 : (paidAmount / price).floor(), 0, count);
   final unpaidStudents = count - paidStudents;
   return PerStudentStats(count, price, total, paidAmount, positive(total - paidAmount), paidStudents, unpaidStudents);
+}
+PerStudentStats perStudentStatsFromStudents(Map<String, dynamic> data, List<QueryDocumentSnapshot<Map<String, dynamic>>> students) {
+  final fallback = perStudentStats(data, students.length);
+  if (students.isEmpty) return fallback;
+  final paidStudents = students.asMap().entries.where((entry) => studentIsPaid(entry.value.data(), fallbackPaid: entry.key < fallback.paidStudents)).length;
+  final price = perStudentPrice(data);
+  final total = students.length * price;
+  final paidAmount = paidStudents * price;
+  return PerStudentStats(students.length, price, total, paidAmount, positive(total - paidAmount), paidStudents, students.length - paidStudents);
 }
 int daysLeft(Map<String, dynamic> data) {
   final end = DateTime.tryParse('${sub(data)['endDate'] ?? ''}');
