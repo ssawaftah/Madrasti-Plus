@@ -19,7 +19,6 @@ class _LoginScreenState extends State<LoginScreen> {
   int _selectedTabIndex = 1;
 
   static const _blue = Color(0xFF2457D6);
-  static const _dark = Color(0xFF505050);
   static const _softBlue = Color(0xFFF3F6FF);
 
   @override
@@ -182,61 +181,61 @@ class _LoginScreenState extends State<LoginScreen> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: Colors.white,
+        resizeToAvoidBottomInset: false,
         body: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              return SingleChildScrollView(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 18),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 24),
-                        _TopBar(onLanguageTap: _showLanguageSheet),
-                        SizedBox(height: constraints.maxHeight < 720 ? 76 : 120),
-                        const _MadrastiLogo(),
-                        SizedBox(height: constraints.maxHeight < 720 ? 84 : 140),
-                        _LoginForm(
-                          schoolCodeController: _schoolCodeController,
-                          emailController: _emailController,
-                          passwordController: _passwordController,
-                          obscurePassword: _obscurePassword,
-                          isLoading: _isLoading,
-                          onTogglePassword: () {
-                            setState(() => _obscurePassword = !_obscurePassword);
-                          },
-                          onLogin: _login,
+              final isCompact = constraints.maxHeight < 740;
+              final topGap = isCompact ? 54.0 : 76.0;
+              final formGap = isCompact ? 48.0 : 70.0;
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: Column(
+                  children: [
+                    SizedBox(height: isCompact ? 12 : 18),
+                    _TopBar(onLanguageTap: _showLanguageSheet),
+                    SizedBox(height: topGap),
+                    const _MadrastiLogo(),
+                    SizedBox(height: formGap),
+                    _LoginForm(
+                      schoolCodeController: _schoolCodeController,
+                      emailController: _emailController,
+                      passwordController: _passwordController,
+                      obscurePassword: _obscurePassword,
+                      isLoading: _isLoading,
+                      onTogglePassword: () {
+                        setState(() => _obscurePassword = !_obscurePassword);
+                      },
+                      onLogin: _login,
+                    ),
+                    SizedBox(height: isCompact ? 14 : 18),
+                    Row(
+                      children: const [
+                        Expanded(
+                          child: _FeatureCard(
+                            icon: Icons.notifications_active_outlined,
+                            title: 'تنبيهات\nفورية',
+                          ),
                         ),
-                        const SizedBox(height: 20),
-                        Row(
-                          children: const [
-                            Expanded(
-                              child: _FeatureCard(
-                                icon: Icons.notifications_active_outlined,
-                                title: 'تنبيهات\nفورية',
-                              ),
-                            ),
-                            SizedBox(width: 18),
-                            Expanded(
-                              child: _FeatureCard(
-                                icon: Icons.analytics_outlined,
-                                title: 'تقارير\nذكية',
-                              ),
-                            ),
-                          ],
+                        SizedBox(width: 14),
+                        Expanded(
+                          child: _FeatureCard(
+                            icon: Icons.analytics_outlined,
+                            title: 'تقارير\nذكية',
+                          ),
                         ),
-                        const SizedBox(height: 34),
-                        _BottomTabs(
-                          selectedIndex: _selectedTabIndex,
-                          onHelpTap: _showHelpSheet,
-                          onLoginTap: () => setState(() => _selectedTabIndex = 1),
-                          onContactTap: _showContactSheet,
-                        ),
-                        const SizedBox(height: 10),
                       ],
                     ),
-                  ),
+                    const Spacer(),
+                    _BottomTabs(
+                      selectedIndex: _selectedTabIndex,
+                      onHelpTap: _showHelpSheet,
+                      onLoginTap: () => setState(() => _selectedTabIndex = 1),
+                      onContactTap: _showContactSheet,
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                 ),
               );
             },
@@ -262,9 +261,9 @@ class _TopBar extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: const [
-              Text('اختر اللغة', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w500)),
-              SizedBox(width: 10),
-              Icon(Icons.language, size: 28),
+              Text('اختر اللغة', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+              SizedBox(width: 9),
+              Icon(Icons.language, size: 26),
             ],
           ),
         ),
@@ -280,23 +279,23 @@ class _MadrastiLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: const [
-        Icon(Icons.school_rounded, color: Color(0xFF56B47B), size: 70),
-        SizedBox(height: 6),
+        Icon(Icons.school_rounded, color: Color(0xFF56B47B), size: 58),
+        SizedBox(height: 4),
         Text(
           'مدرستي +',
           style: TextStyle(
             color: Color(0xFF56B47B),
-            fontSize: 38,
+            fontSize: 33,
             fontWeight: FontWeight.w800,
             letterSpacing: -0.5,
           ),
         ),
-        SizedBox(height: 2),
+        SizedBox(height: 1),
         Text(
           'Madrasti Plus',
           style: TextStyle(
             color: Color(0xFF4A4A4A),
-            fontSize: 24,
+            fontSize: 21,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.7,
           ),
@@ -335,14 +334,14 @@ class _LoginForm extends StatelessWidget {
           icon: Icons.qr_code_2,
           textCapitalization: TextCapitalization.characters,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         _SanadLikeField(
           controller: emailController,
           hint: 'البريد الإلكتروني',
           icon: Icons.email_outlined,
           keyboardType: TextInputType.emailAddress,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         _SanadLikeField(
           controller: passwordController,
           hint: 'كلمة السر',
@@ -354,20 +353,20 @@ class _LoginForm extends StatelessWidget {
           ),
           onSubmitted: (_) => onLogin(),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 9),
         SizedBox(
           width: double.infinity,
-          height: 62,
+          height: 54,
           child: FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: _LoginScreenState._blue,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
-              textStyle: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              textStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
             ),
             onPressed: isLoading ? null : onLogin,
             child: isLoading
-                ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
+                ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Text('تسجيل دخول'),
           ),
         ),
@@ -400,7 +399,7 @@ class _SanadLikeField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 62,
+      height: 54,
       child: TextField(
         controller: controller,
         obscureText: obscureText,
@@ -409,18 +408,25 @@ class _SanadLikeField extends StatelessWidget {
         textInputAction: onSubmitted == null ? TextInputAction.next : TextInputAction.done,
         onSubmitted: onSubmitted,
         textAlign: TextAlign.right,
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w500, color: Color(0xFF1F2937)),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: const TextStyle(fontSize: 20, color: Color(0xFF565656), fontWeight: FontWeight.w500),
-          prefixIcon: Icon(icon, color: Color(0xFF565656), size: 30),
+          hintStyle: const TextStyle(fontSize: 17, color: Color(0xFF5C6472), fontWeight: FontWeight.w500),
+          prefixIcon: Icon(icon, color: _LoginScreenState._blue, size: 26),
           suffixIcon: suffixIcon,
-          filled: true,
-          fillColor: _LoginScreenState._dark,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+          filled: false,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(13),
-            borderSide: BorderSide.none,
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: _LoginScreenState._blue, width: 0.8),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: _LoginScreenState._blue, width: 0.8),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: _LoginScreenState._blue, width: 1.1),
           ),
         ),
       ),
@@ -437,24 +443,24 @@ class _FeatureCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 86,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      height: 76,
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
       decoration: BoxDecoration(
         color: _LoginScreenState._softBlue,
-        borderRadius: BorderRadius.circular(13),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
-          Icon(icon, color: _LoginScreenState._blue, size: 34),
-          const SizedBox(width: 12),
+          Icon(icon, color: _LoginScreenState._blue, size: 30),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
               title,
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: _LoginScreenState._blue,
-                fontSize: 18,
-                height: 1.25,
+                fontSize: 16,
+                height: 1.22,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -530,7 +536,7 @@ class _BottomTab extends StatelessWidget {
           children: [
             AnimatedContainer(
               duration: const Duration(milliseconds: 180),
-              padding: selected ? const EdgeInsets.symmetric(horizontal: 22, vertical: 8) : EdgeInsets.zero,
+              padding: selected ? const EdgeInsets.symmetric(horizontal: 20, vertical: 7) : EdgeInsets.zero,
               decoration: BoxDecoration(
                 color: selected ? const Color(0xFFEFF3FF) : Colors.transparent,
                 borderRadius: BorderRadius.circular(999),
@@ -538,15 +544,15 @@ class _BottomTab extends StatelessWidget {
               child: Icon(
                 icon,
                 color: selected ? _LoginScreenState._blue : const Color(0xFF747985),
-                size: 34,
+                size: 31,
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 5),
             Text(
               label,
               style: TextStyle(
                 color: selected ? _LoginScreenState._blue : const Color(0xFF747985),
-                fontSize: 17,
+                fontSize: 15,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
