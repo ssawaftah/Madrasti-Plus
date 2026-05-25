@@ -394,7 +394,7 @@ class _SubscriptionCard extends StatelessWidget {
     final annual = per ? perStudentStats(data, students).total : n(s['annualAmount']);
     final paid = n(s['paidAmount']);
     final remaining = per ? perStudentStats(data, students).remaining : n(s['remainingAmount']);
-    final progress = annual <= 0 ? 0.0 : (paid / annual).clamp(0.0, 1.0);
+    final progress = annual <= 0 ? 0.0 : (paid / annual).clamp(0.0, 1.0).toDouble();
 
     return card(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -440,7 +440,7 @@ class _SubscriptionCard extends StatelessWidget {
       Row(children: [
         Expanded(child: OutlinedButton.icon(onPressed: () => openSubscriptionDetails(context, doc), icon: const Icon(Icons.visibility_outlined, size: 18), label: const Text('عرض'))),
         const SizedBox(width: 8),
-        Expanded(child: FilledButton.icon(onPressed: () => openSubscriptionDetails(context, doc, focusPayment: true), icon: const Icon(Icons.payments_outlined, size: 18), label: const Text('دفعة'))),
+        Expanded(child: FilledButton.icon(onPressed: () => openSubscriptionDetails(context, doc), icon: const Icon(Icons.payments_outlined, size: 18), label: const Text('دفعة'))),
       ]),
     ]));
   }
@@ -519,7 +519,8 @@ class _TrialsTab extends StatefulWidget {
 
   @override
   State<_TrialsTab> createState() => _TrialsTabState();
-}\n
+}
+
 class _TrialsTabState extends State<_TrialsTab> {
   final search = TextEditingController();
   String filter = 'all';
@@ -929,8 +930,7 @@ class _ConvertTrialSheetState extends State<_ConvertTrialSheet> {
 
 class _SubscriptionDetailsSheet extends StatefulWidget {
   final QueryDocumentSnapshot<Map<String, dynamic>> doc;
-  final bool focusPayment;
-  const _SubscriptionDetailsSheet(this.doc, {this.focusPayment = false});
+  const _SubscriptionDetailsSheet(this.doc);
 
   @override
   State<_SubscriptionDetailsSheet> createState() => _SubscriptionDetailsSheetState();
@@ -1234,7 +1234,7 @@ void pick<T>(BuildContext context, String title, List<T> items, String Function(
 
 void openPlanForm(BuildContext context, {DocumentSnapshot<Map<String, dynamic>>? doc}) => showModalBottomSheet<void>(context: context, isScrollControlled: true, showDragHandle: true, backgroundColor: Colors.white, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))), builder: (_) => _PlanForm(doc: doc));
 void openTrialDetails(BuildContext context, QueryDocumentSnapshot<Map<String, dynamic>> doc) => showModalBottomSheet<void>(context: context, isScrollControlled: true, showDragHandle: true, backgroundColor: Colors.white, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))), builder: (_) => _TrialDetailsSheet(doc));
-void openSubscriptionDetails(BuildContext context, QueryDocumentSnapshot<Map<String, dynamic>> doc, {bool focusPayment = false}) => showModalBottomSheet<void>(context: context, isScrollControlled: true, showDragHandle: true, backgroundColor: Colors.white, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))), builder: (_) => _SubscriptionDetailsSheet(doc, focusPayment: focusPayment));
+void openSubscriptionDetails(BuildContext context, QueryDocumentSnapshot<Map<String, dynamic>> doc) => showModalBottomSheet<void>(context: context, isScrollControlled: true, showDragHandle: true, backgroundColor: Colors.white, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))), builder: (_) => _SubscriptionDetailsSheet(doc));
 
 Future<int> getStudentsCount(String schoolId) async {
   final snap = await _db.collection('schools').doc(schoolId).collection('students').get();
