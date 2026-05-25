@@ -295,10 +295,85 @@ class _Nav extends StatelessWidget { final String title; final String subtitle; 
 class _Filter extends StatelessWidget { final String selected; final Map<String, String> items; final ValueChanged<String> onChanged; const _Filter({required this.selected, required this.items, required this.onChanged}); @override Widget build(BuildContext context) => SizedBox(height: 40, child: ListView(scrollDirection: Axis.horizontal, children: items.entries.map((e) => Padding(padding: const EdgeInsets.only(left: 8), child: ChoiceChip(selected: selected == e.key, showCheckmark: false, label: Text(e.value), selectedColor: _softBlue, onSelected: (_) => onChanged(e.key)))).toList())); }
 class _Back extends StatelessWidget { final String text; final VoidCallback onTap; const _Back({required this.text, required this.onTap}); @override Widget build(BuildContext context) => Row(children: [IconButton(onPressed: onTap, icon: const Icon(Icons.arrow_back, color: _blue)), Expanded(child: Text(text, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)))]); }
 class _Empty extends StatelessWidget { final String text; const _Empty(this.text); @override Widget build(BuildContext context) => _Panel(child: Center(child: Text(text, style: const TextStyle(fontWeight: FontWeight.w800)))); }
-class _Line extends StatelessWidget { final String label; final String value; const _Line(this.label, this.value); @override Widget build(BuildContext context) => Padding(padding: const EdgeInsets.only(bottom: 8), child: Row(children: [Expanded(child: Text(label, style: const TextStyle(color: _muted, fontWeight: FontWeight.w800))), Text(value, style: const TextStyle(fontWeight: FontWeight.w900))])); }
+class _Line extends StatelessWidget { final String label; final String value; const _Line(this.label, this.value); @override Widget build(BuildContext context) => Padding(padding: const EdgeInsets.only(bottom: 8), child: Row(children: [Expanded(child: Text(label, style: const TextStyle(color: _muted, fontWeight: FontWeight.w800))), Flexible(child: Text(value, textAlign: TextAlign.left, style: const TextStyle(fontWeight: FontWeight.w900)))])); }
 
 class _StudentCard extends StatelessWidget { final Map<String, dynamic> school; final List<QueryDocumentSnapshot<Map<String, dynamic>>> all; final QueryDocumentSnapshot<Map<String, dynamic>> doc; const _StudentCard({required this.school, required this.all, required this.doc}); @override Widget build(BuildContext context) { final d = doc.data(); final paid = paidStudent(school, all, doc); return _Panel(child: Row(children: [Container(width: 46, height: 46, decoration: BoxDecoration(color: paid ? _success.withOpacity(.1) : _softBlue, borderRadius: BorderRadius.circular(16)), child: Icon(paid ? Icons.verified_user_outlined : Icons.person_outline, color: paid ? _success : _blue)), const SizedBox(width: 10), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(name(d), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)), Text('${grade(d)} • شعبة ${section(d)}', style: const TextStyle(color: _muted, fontWeight: FontWeight.w700, fontSize: 12)), Text('ولي الأمر: ${parent(d)}', style: const TextStyle(color: _muted, fontWeight: FontWeight.w700, fontSize: 12))])), Column(crossAxisAlignment: CrossAxisAlignment.end, children: [_Badge(activeAccount(d) ? 'نشط' : 'غير نشط', activeAccount(d) ? _success : _danger), if (isPerStudent(school)) ...[const SizedBox(height: 6), _Badge(paid ? 'مدفوع' : 'غير مدفوع', paid ? _success : _danger)]]) ])); }}
-class _TeacherCard extends StatelessWidget { final Map<String, dynamic> t; const _TeacherCard(this.t); @override Widget build(BuildContext context) => _Panel(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [Row(children: [Container(width: 48, height: 48, decoration: BoxDecoration(color: _softBlue, borderRadius: BorderRadius.circular(16)), child: const Icon(Icons.person_outline, color: _blue)), const SizedBox(width: 10), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(teacherName(t), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)), Text('الهاتف: ${teacherPhone(t)}', style: const TextStyle(color: _muted, fontWeight: FontWeight.w700))]))]), const SizedBox(height: 10), Text('الشعب والصفوف: ${classesOf(t).isEmpty ? 'غير محدد' : classesOf(t).join('، ')}', style: const TextStyle(color: _muted, fontWeight: FontWeight.w800)), const SizedBox(height: 10), SizedBox(height: 42, child: OutlinedButton.icon(onPressed: () => showModalBottomSheet(context: context, showDragHandle: true, builder: (_) => Directionality(textDirection: TextDirection.rtl, child: Padding(padding: const EdgeInsets.all(20), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [Text(teacherName(t), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)), _Line('الهاتف', teacherPhone(t)), _Line('المواد', subjectsOf(t).join('، ')), _Line('الصفوف والشعب', classesOf(t).join('، ')), _Line('معلومات عامة', '${t['notes'] ?? t['generalInfo'] ?? t['bio'] ?? 'غير محدد'}')]))), icon: const Icon(Icons.visibility_outlined), label: const Text('عرض التفاصيل')))])); }
+
+class _TeacherCard extends StatelessWidget {
+  final Map<String, dynamic> t;
+  const _TeacherCard(this.t);
+
+  @override
+  Widget build(BuildContext context) {
+    return _Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(color: _softBlue, borderRadius: BorderRadius.circular(16)),
+                child: const Icon(Icons.person_outline, color: _blue),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(teacherName(t), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900)),
+                    Text('الهاتف: ${teacherPhone(t)}', style: const TextStyle(color: _muted, fontWeight: FontWeight.w700)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'الشعب والصفوف: ${classesOf(t).isEmpty ? 'غير محدد' : classesOf(t).join('، ')}',
+            style: const TextStyle(color: _muted, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 42,
+            child: OutlinedButton.icon(
+              onPressed: () => showModalBottomSheet<void>(
+                context: context,
+                showDragHandle: true,
+                backgroundColor: Colors.white,
+                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(26))),
+                builder: (_) => Directionality(
+                  textDirection: TextDirection.rtl,
+                  child: SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(teacherName(t), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+                          const SizedBox(height: 12),
+                          _Line('الهاتف', teacherPhone(t)),
+                          _Line('المواد', subjectsOf(t).join('، ')),
+                          _Line('الصفوف والشعب', classesOf(t).isEmpty ? 'غير محدد' : classesOf(t).join('، ')),
+                          _Line('معلومات عامة', '${t['notes'] ?? t['generalInfo'] ?? t['bio'] ?? 'غير محدد'}'),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              icon: const Icon(Icons.visibility_outlined),
+              label: const Text('عرض التفاصيل'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _Badge extends StatelessWidget { final String text; final Color color; const _Badge(this.text, this.color); @override Widget build(BuildContext context) => Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5), decoration: BoxDecoration(color: color.withOpacity(.1), borderRadius: BorderRadius.circular(999)), child: Text(text, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w900))); }
 
 Map<String, dynamic> sub(Map<String, dynamic> d) => d['subscription'] is Map<String, dynamic> ? Map<String, dynamic>.from(d['subscription'] as Map<String, dynamic>) : <String, dynamic>{};
