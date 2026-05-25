@@ -216,7 +216,7 @@ class _SuperAdminHomeScreenV2State extends State<SuperAdminHomeScreenV2> {
                     onSubscriptionsTap: () => _showMessage('الاشتراكات قريبًا'),
                   ),
                   const SizedBox(height: 22),
-                  _ToolsHeader(onCustomizeTap: () => _showMessage('التخصيص لاحقًا')),
+                  const _ToolsHeader(),
                   const SizedBox(height: 10),
                   _PlatformStatusCard(totalSchools: schools.length),
                   const SizedBox(height: 22),
@@ -398,30 +398,17 @@ class _QuickAccessTile extends StatelessWidget {
 }
 
 class _ToolsHeader extends StatelessWidget {
-  final VoidCallback onCustomizeTap;
-
-  const _ToolsHeader({required this.onCustomizeTap});
+  const _ToolsHeader();
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        GestureDetector(
-          onTap: onCustomizeTap,
-          child: Row(
-            children: const [
-              Icon(Icons.edit_outlined, color: Color(0xFF2457D6), size: 23),
-              SizedBox(width: 7),
-              Text(
-                'تخصيص',
-                style: TextStyle(color: Color(0xFF2457D6), fontSize: 19, fontWeight: FontWeight.w600),
-              ),
-            ],
-          ),
-        ),
-        const Spacer(),
-        const Text('أدواتي', style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800)),
-      ],
+    return const Align(
+      alignment: Alignment.centerRight,
+      child: Text(
+        'أدواتي',
+        textAlign: TextAlign.right,
+        style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800),
+      ),
     );
   }
 }
@@ -727,12 +714,13 @@ class _SuperAdminBottomNav extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 8, 14, 6),
       color: Colors.white,
       child: Row(
+        textDirection: TextDirection.rtl,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _NavItem(icon: Icons.person_outline, label: 'الحساب', selected: selectedIndex == 3, onTap: () => onTap(3)),
-          _NavItem(icon: Icons.inventory_2_outlined, label: 'الخدمات', selected: selectedIndex == 2, onTap: () => onTap(2)),
-          _NavItem(icon: Icons.article_outlined, label: 'المستندات', selected: selectedIndex == 1, onTap: () => onTap(1)),
           _NavItem(icon: Icons.home_outlined, label: 'الرئيسية', selected: selectedIndex == 0, onTap: () => onTap(0)),
+          _NavItem(icon: Icons.article_outlined, label: 'المستندات', selected: selectedIndex == 1, onTap: () => onTap(1)),
+          _NavItem(icon: Icons.inventory_2_outlined, label: 'الخدمات', selected: selectedIndex == 2, onTap: () => onTap(2)),
+          _NavItem(icon: Icons.person_outline, label: 'الحساب', selected: selectedIndex == 3, onTap: () => onTap(3)),
         ],
       ),
     );
