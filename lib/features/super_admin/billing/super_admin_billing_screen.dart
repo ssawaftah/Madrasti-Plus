@@ -15,6 +15,7 @@ const _panel = Color(0xFFF8F8FC);
 const _muted = Color(0xFF6B7280);
 const _danger = Color(0xFFB42318);
 const _success = Color(0xFF16833A);
+const _warning = Color(0xFFB54708);
 
 class SuperAdminBillingScreen extends StatefulWidget {
   const SuperAdminBillingScreen({super.key});
@@ -126,15 +127,11 @@ class _SummaryTab extends StatelessWidget {
       final data = d(school);
       final s = sub(data);
       if (isPerStudent(data)) {
-        final count = intFrom(data['studentsCount']);
-        final price = perStudentPrice(data);
-        final total = count * price;
-        final paidAmount = n(s['paidAmount']);
-        final paidCount = clampInt(price <= 0 ? 0 : (paidAmount / price).floor(), 0, count);
-        annual += total;
-        paid += paidAmount;
-        remaining += positive(total - paidAmount);
-        unpaidStudents += count - paidCount;
+        final stats = perStudentStats(data, intFrom(data['studentsCount']));
+        annual += stats.total;
+        paid += stats.paidAmount;
+        remaining += stats.remaining;
+        unpaidStudents += stats.unpaidStudents;
       } else {
         annual += n(s['annualAmount']);
         paid += n(s['paidAmount']);
@@ -268,25 +265,119 @@ class _SubscriptionsTabState extends State<_SubscriptionsTab> {
   @override
   Widget build(BuildContext context) {
     final subscribed = widget.schools.where((s) => d(s)['status'] == 'active').toList();
+    final counts = {
+      'all': subscribed.length,
+      'active': subscribed.where((s) => subscriptionState(d(s)) == 'active').length,
+      'due': subscribed.where((s) => subscriptionState(d(s)) == 'due').length,
+      'expired': subscribed.where((s) => subscriptionState(d(s)) == 'expired').length,
+      'bundle': subscribed.where((s) => !isPerStudent(d(s))).length,
+      'per_student': subscribed.where((s) => isPerStudent(d(s))).length,
+    };
     final q = search.text.trim().toLowerCase();
     final visible = subscribed.where((s) {
       final data = d(s);
       final name = '${data['name'] ?? ''}'.toLowerCase();
       final code = '${data['code'] ?? ''}'.toLowerCase();
-      final st = subscriptionState(data);
-      return (q.isEmpty || name.contains(q) || code.contains(q)) && (filter == 'all' || st == filter);
+      final planName = '${sub(data)['planName'] ?? ''}'.toLowerCase();
+      final status = subscriptionState(data);
+      final typeOk = filter == 'all' || status == filter || (filter == 'bundle' && !isPerStudent(data)) || (filter == 'per_student' && isPerStudent(data));
+      return (q.isEmpty || name.contains(q) || code.contains(q) || planName.contains(q)) && typeOk;
     }).toList();
 
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      const Text('اشتراكات المدارس', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-      const SizedBox(height: 12),
-      _SearchBox(search, (_) => setState(() {}), hint: 'ابحث باسم المدرسة أو رمزها...'),
+      Row(children: [
+        Container(width: 44, height: 44, decoration: BoxDecoration(color: _softBlue, borderRadius: BorderRadius.circular(16)), child: const Icon(Icons.receipt_long_outlined, color: _blue)),
+        const SizedBox(width: 10),
+        const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('اشتراكات المدارس', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+          SizedBox(height: 3),
+          Text('متابعة الخطط، الدفع، الحدود، وحالة كل مدرسة', style: TextStyle(color: _muted, fontWeight: FontWeight.w700)),
+        ])),
+      ]),
+      const SizedBox(height: 14),
+      _SubscriptionsOverview(schools: subscribed),
+      const SizedBox(height: 14),
+      _SearchBox(search, (_) => setState(() {}), hint: 'ابحث باسم المدرسة أو الرمز أو الخطة...'),
       const SizedBox(height: 10),
-      _SmallFilter(filter, const {'all': 'الكل', 'active': 'نشط', 'expired': 'منتهي', 'due': 'متأخر بالدفع'}, (v) => setState(() => filter = v)),
+      _SmallFilter(filter, {
+        'all': 'الكل ${counts['all']}',
+        'active': 'نشط ${counts['active']}',
+        'due': 'متأخر ${counts['due']}',
+        'expired': 'منتهي ${counts['expired']}',
+        'bundle': 'شاملة ${counts['bundle']}',
+        'per_student': 'حسب الطالب ${counts['per_student']}',
+      }, (v) => setState(() => filter = v)),
       const SizedBox(height: 12),
       if (visible.isEmpty) const _Empty('لا توجد اشتراكات مطابقة') else ...visible.map((s) => _SubscriptionCard(s)),
     ]);
   }
+}
+
+class _SubscriptionsOverview extends StatelessWidget {
+  final List<QueryDocumentSnapshot<Map<String, dynamic>>> schools;
+  const _SubscriptionsOverview({required this.schools});
+
+  @override
+  Widget build(BuildContext context) {
+    double annual = 0;
+    double paid = 0;
+    double remaining = 0;
+    int perStudent = 0;
+    int bundle = 0;
+    for (final doc in schools) {
+      final data = d(doc);
+      final s = sub(data);
+      if (isPerStudent(data)) {
+        perStudent++;
+        final stats = perStudentStats(data, intFrom(data['studentsCount']));
+        annual += stats.total;
+        paid += stats.paidAmount;
+        remaining += stats.remaining;
+      } else {
+        bundle++;
+        annual += n(s['annualAmount']);
+        paid += n(s['paidAmount']);
+        remaining += n(s['remainingAmount']);
+      }
+    }
+    return Column(children: [
+      Row(children: [
+        Expanded(child: _MiniSummary('اشتراكات', '${schools.length}', Icons.apartment_outlined)),
+        const SizedBox(width: 8),
+        Expanded(child: _MiniSummary('شاملة', '$bundle', Icons.all_inclusive_rounded)),
+        const SizedBox(width: 8),
+        Expanded(child: _MiniSummary('حسب الطالب', '$perStudent', Icons.groups_outlined)),
+      ]),
+      const SizedBox(height: 8),
+      Row(children: [
+        Expanded(child: _MiniSummary('سنويًا', '${money(annual)} د.أ', Icons.calendar_month_outlined)),
+        const SizedBox(width: 8),
+        Expanded(child: _MiniSummary('مدفوع', '${money(paid)} د.أ', Icons.payments_outlined)),
+        const SizedBox(width: 8),
+        Expanded(child: _MiniSummary('متبقي', '${money(remaining)} د.أ', Icons.account_balance_wallet_outlined)),
+      ]),
+    ]);
+  }
+}
+
+class _MiniSummary extends StatelessWidget {
+  final String title;
+  final String value;
+  final IconData icon;
+  const _MiniSummary(this.title, this.value, this.icon);
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(16)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(icon, color: _blue, size: 20),
+          const SizedBox(height: 8),
+          Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 3),
+          Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _muted, fontSize: 11, fontWeight: FontWeight.w800)),
+        ]),
+      );
 }
 
 class _SubscriptionCard extends StatelessWidget {
@@ -297,21 +388,60 @@ class _SubscriptionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final data = d(doc);
     final s = sub(data);
+    final per = isPerStudent(data);
+    final limit = intFrom(s['studentLimit']);
+    final students = intFrom(data['studentsCount']);
+    final annual = per ? perStudentStats(data, students).total : n(s['annualAmount']);
+    final paid = n(s['paidAmount']);
+    final remaining = per ? perStudentStats(data, students).remaining : n(s['remainingAmount']);
+    final progress = annual <= 0 ? 0.0 : (paid / annual).clamp(0.0, 1.0);
+
     return card(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Row(children: [
-        Expanded(child: Text('${data['name'] ?? 'مدرسة'}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Container(width: 46, height: 46, decoration: BoxDecoration(color: _softBlue, borderRadius: BorderRadius.circular(16)), child: Icon(per ? Icons.groups_outlined : Icons.all_inclusive_rounded, color: _blue)),
+        const SizedBox(width: 10),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('${data['name'] ?? 'مدرسة'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 3),
+          Text('رمز المدرسة: ${data['code'] ?? '—'}', style: const TextStyle(color: _muted, fontWeight: FontWeight.w700)),
+        ])),
         _Badge(subscriptionLabel(data), subscriptionColor(data)),
       ]),
-      const SizedBox(height: 8),
-      Text('رمز المدرسة: ${data['code'] ?? ''}', style: const TextStyle(color: _muted, fontWeight: FontWeight.w700)),
-      const SizedBox(height: 10),
-      Wrap(spacing: 8, runSpacing: 8, children: [_Chip('الخطة: ${s['planName'] ?? '—'}'), _Chip('النهاية: ${date(s['endDate'])}')]),
-      const SizedBox(height: 8),
-      isPerStudent(data)
-          ? _PerStudentBillingPreview(doc: doc)
-          : Wrap(spacing: 8, runSpacing: 8, children: [_Chip('المدفوع: ${money(n(s['paidAmount']))} د.أ'), _Chip('المتبقي: ${money(n(s['remainingAmount']))} د.أ')]),
       const SizedBox(height: 12),
-      SizedBox(height: 42, child: OutlinedButton.icon(onPressed: () => openSubscriptionDetails(context, doc), icon: const Icon(Icons.visibility_outlined), label: const Text('عرض'))),
+      Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFE5E7EB))),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            Expanded(child: _LineInfo('نوع الخطة', per ? 'حسب الطالب' : 'شاملة')),
+            Expanded(child: _LineInfo('الخطة', '${s['planName'] ?? '—'}')),
+          ]),
+          const SizedBox(height: 10),
+          Row(children: [
+            Expanded(child: _LineInfo('البداية', date(s['startDate']))),
+            Expanded(child: _LineInfo('النهاية', date(s['endDate']))),
+          ]),
+        ]),
+      ),
+      const SizedBox(height: 12),
+      if (per)
+        _PerStudentBillingPreview(doc: doc)
+      else
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          _DataPill('عدد الطلاب', '$students'),
+          _DataPill('حد الطلاب', limit == 0 ? 'غير محدد' : '$limit'),
+          if (limit > 0) _DataPill('المقاعد المتبقية', '${positiveInt(limit - students)}'),
+          _DataPill('المدفوع', '${money(paid)} د.أ'),
+          _DataPill('المتبقي', '${money(remaining)} د.أ'),
+        ]),
+      const SizedBox(height: 12),
+      _ProgressBlock(title: 'نسبة التحصيل', value: progress, text: '${(progress * 100).toStringAsFixed(0)}%'),
+      const SizedBox(height: 12),
+      Row(children: [
+        Expanded(child: OutlinedButton.icon(onPressed: () => openSubscriptionDetails(context, doc), icon: const Icon(Icons.visibility_outlined, size: 18), label: const Text('عرض'))),
+        const SizedBox(width: 8),
+        Expanded(child: FilledButton.icon(onPressed: () => openSubscriptionDetails(context, doc, focusPayment: true), icon: const Icon(Icons.payments_outlined, size: 18), label: const Text('دفعة'))),
+      ]),
     ]));
   }
 }
@@ -327,14 +457,60 @@ class _PerStudentBillingPreview extends StatelessWidget {
       builder: (context, snapshot) {
         final stats = perStudentStats(d(doc), snapshot.data?.docs.length ?? intFrom(d(doc)['studentsCount']));
         return Wrap(spacing: 8, runSpacing: 8, children: [
-          _Chip('عدد الطلاب: ${stats.count}'),
-          _Chip('مدفوعين: ${stats.paidStudents}'),
-          _Chip('غير مدفوعين: ${stats.unpaidStudents}'),
-          _Chip('المتبقي: ${money(stats.remaining)} د.أ'),
+          _DataPill('عدد الطلاب', '${stats.count}'),
+          _DataPill('سعر الطالب', '${money(stats.price)} د.أ'),
+          _DataPill('المستحق', '${money(stats.total)} د.أ'),
+          _DataPill('مدفوعين', '${stats.paidStudents}'),
+          _DataPill('غير مدفوعين', '${stats.unpaidStudents}'),
+          _DataPill('المتبقي', '${money(stats.remaining)} د.أ'),
         ]);
       },
     );
   }
+}
+
+class _LineInfo extends StatelessWidget {
+  final String title;
+  final String value;
+  const _LineInfo(this.title, this.value);
+
+  @override
+  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title, style: const TextStyle(color: _muted, fontSize: 12, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 4),
+        Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w900)),
+      ]);
+}
+
+class _DataPill extends StatelessWidget {
+  final String title;
+  final String value;
+  const _DataPill(this.title, this.value);
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFE5E7EB))),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+          Text(title, style: const TextStyle(color: _muted, fontSize: 11, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 3),
+          Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900)),
+        ]),
+      );
+}
+
+class _ProgressBlock extends StatelessWidget {
+  final String title;
+  final double value;
+  final String text;
+  const _ProgressBlock({required this.title, required this.value, required this.text});
+
+  @override
+  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [Expanded(child: Text(title, style: const TextStyle(color: _muted, fontWeight: FontWeight.w800))), Text(text, style: const TextStyle(fontWeight: FontWeight.w900))]),
+        const SizedBox(height: 7),
+        ClipRRect(borderRadius: BorderRadius.circular(99), child: LinearProgressIndicator(value: value, minHeight: 8, backgroundColor: const Color(0xFFE5E7EB), color: _blue)),
+      ]);
 }
 
 class _TrialsTab extends StatefulWidget {
@@ -343,8 +519,7 @@ class _TrialsTab extends StatefulWidget {
 
   @override
   State<_TrialsTab> createState() => _TrialsTabState();
-}
-
+}\n
 class _TrialsTabState extends State<_TrialsTab> {
   final search = TextEditingController();
   String filter = 'all';
@@ -477,7 +652,7 @@ class _AlertsTab extends StatelessWidget {
       final left = daysLeft(data);
       if (data['status'] == 'active' && left > 0 && left <= 30) alerts.add(_Alert('اشتراك ينتهي قريبًا', '$name ينتهي بعد $left يوم', Icons.event_busy_outlined, _blue));
       if (data['status'] == 'active' && left <= 0) alerts.add(_Alert('اشتراك منتهي', '$name انتهى اشتراكها', Icons.warning_amber_rounded, _danger));
-      if (data['status'] == 'trial' && left > 0 && left <= 7) alerts.add(_Alert('تجربة تنتهي قريبًا', '$name تنتهي تجربتها بعد $left يوم', Icons.hourglass_bottom_rounded, const Color(0xFFB54708)));
+      if (data['status'] == 'trial' && left > 0 && left <= 7) alerts.add(_Alert('تجربة تنتهي قريبًا', '$name تنتهي تجربتها بعد $left يوم', Icons.hourglass_bottom_rounded, _warning));
       if (isPerStudent(data)) {
         final stats = perStudentStats(data, intFrom(data['studentsCount']));
         if (stats.unpaidStudents > 0) alerts.add(_Alert('طلاب غير مدفوعين', '$name لديها ${stats.unpaidStudents} طالب غير مدفوع', Icons.person_off_outlined, _danger));
@@ -754,7 +929,8 @@ class _ConvertTrialSheetState extends State<_ConvertTrialSheet> {
 
 class _SubscriptionDetailsSheet extends StatefulWidget {
   final QueryDocumentSnapshot<Map<String, dynamic>> doc;
-  const _SubscriptionDetailsSheet(this.doc);
+  final bool focusPayment;
+  const _SubscriptionDetailsSheet(this.doc, {this.focusPayment = false});
 
   @override
   State<_SubscriptionDetailsSheet> createState() => _SubscriptionDetailsSheetState();
@@ -782,7 +958,8 @@ class _SubscriptionDetailsSheetState extends State<_SubscriptionDetailsSheet> {
             const Text('تفاصيل الاشتراك', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
             const SizedBox(height: 12),
             card(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Text('المدرسة: ${data['name'] ?? ''}'),
+              Text('المدرسة: ${data['name'] ?? ''}', style: const TextStyle(fontWeight: FontWeight.w900)),
+              const SizedBox(height: 6),
               Text('الخطة: ${s['planName'] ?? ''}'),
               Text('البداية: ${date(s['startDate'])}'),
               Text('النهاية: ${date(s['endDate'])}'),
@@ -829,11 +1006,12 @@ class _BundleBillingDetails extends StatelessWidget {
     final limit = intFrom(s['studentLimit']);
     final current = intFrom(data['studentsCount']);
     return card(Wrap(spacing: 8, runSpacing: 8, children: [
-      _Chip('حد الطلاب: ${limit == 0 ? 'غير محدد' : limit}'),
-      _Chip('عدد الطلاب: $current'),
-      if (limit > 0) _Chip('المقاعد المتبقية: ${limit - current < 0 ? 0 : limit - current}'),
-      _Chip('المدفوع: ${money(n(s['paidAmount']))} د.أ'),
-      _Chip('المتبقي: ${money(n(s['remainingAmount']))} د.أ'),
+      _DataPill('حد الطلاب', limit == 0 ? 'غير محدد' : '$limit'),
+      _DataPill('عدد الطلاب', '$current'),
+      if (limit > 0) _DataPill('المقاعد المتبقية', '${positiveInt(limit - current)}'),
+      _DataPill('المبلغ السنوي', '${money(n(s['annualAmount']))} د.أ'),
+      _DataPill('المدفوع', '${money(n(s['paidAmount']))} د.أ'),
+      _DataPill('المتبقي', '${money(n(s['remainingAmount']))} د.أ'),
     ]));
   }
 }
@@ -852,13 +1030,13 @@ class _PerStudentBillingDetails extends StatelessWidget {
           const Text('فوترة حسب الطالب', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
           const SizedBox(height: 10),
           Wrap(spacing: 8, runSpacing: 8, children: [
-            _Chip('عدد الطلاب: ${stats.count}'),
-            _Chip('سعر الطالب: ${money(stats.price)} د.أ'),
-            _Chip('إجمالي المستحق: ${money(stats.total)} د.أ'),
-            _Chip('المدفوع: ${money(stats.paidAmount)} د.أ'),
-            _Chip('المتبقي: ${money(stats.remaining)} د.أ'),
-            _Chip('طلاب مدفوعين: ${stats.paidStudents}'),
-            _Chip('طلاب غير مدفوعين: ${stats.unpaidStudents}'),
+            _DataPill('عدد الطلاب', '${stats.count}'),
+            _DataPill('سعر الطالب', '${money(stats.price)} د.أ'),
+            _DataPill('إجمالي المستحق', '${money(stats.total)} د.أ'),
+            _DataPill('المدفوع', '${money(stats.paidAmount)} د.أ'),
+            _DataPill('المتبقي', '${money(stats.remaining)} د.أ'),
+            _DataPill('طلاب مدفوعين', '${stats.paidStudents}'),
+            _DataPill('طلاب غير مدفوعين', '${stats.unpaidStudents}'),
           ]),
         ]));
       },
@@ -1001,22 +1179,29 @@ PerStudentStats perStudentStats(Map<String, dynamic> data, int count) {
   final unpaidStudents = count - paidStudents;
   return PerStudentStats(count, price, total, paidAmount, positive(total - paidAmount), paidStudents, unpaidStudents);
 }
-int daysLeft(Map<String, dynamic> data) { final end = DateTime.tryParse('${sub(data)['endDate'] ?? ''}'); return end == null ? 0 : end.difference(DateTime.now()).inDays + 1; }
-String date(dynamic value) { final x = DateTime.tryParse('$value'); return x == null ? '—' : '${x.year}/${x.month.toString().padLeft(2, '0')}/${x.day.toString().padLeft(2, '0')}'; }
+int daysLeft(Map<String, dynamic> data) {
+  final end = DateTime.tryParse('${sub(data)['endDate'] ?? ''}');
+  return end == null ? 0 : end.difference(DateTime.now()).inDays + 1;
+}
+String date(dynamic value) {
+  final x = DateTime.tryParse('$value');
+  return x == null ? '—' : '${x.year}/${x.month.toString().padLeft(2, '0')}/${x.day.toString().padLeft(2, '0')}';
+}
 double n(dynamic v) => v is num ? v.toDouble() : double.tryParse('$v') ?? 0;
 double toDouble(String v) => double.tryParse(v.trim()) ?? 0;
 int intFrom(dynamic v, [int fallback = 0]) => v is int ? v : v is double ? v.toInt() : int.tryParse('$v') ?? fallback;
 int clampInt(int value, int min, int max) => value < min ? min : value > max ? max : value;
+int positiveInt(int value) => value < 0 ? 0 : value;
 double positive(double value) => value < 0 ? 0 : value;
 String money(double v) => v.toStringAsFixed(v.truncateToDouble() == v ? 0 : 2);
 String typeName(String v) => v == 'trial' ? 'تجربة مجانية' : v == 'bundle' ? 'شاملة' : v == 'custom_bundle' ? 'شاملة مخصصة' : v == 'per_student' ? 'حسب الطالب' : v;
 String planLabel(DocumentSnapshot<Map<String, dynamic>> doc) => '${doc.data()?['name'] ?? 'خطة'} - ${doc.data()?['annualPrice'] ?? 0} د.أ';
 String trialState(Map<String, dynamic> data) => daysLeft(data) <= 0 ? 'expired' : daysLeft(data) <= 7 ? 'ending' : 'active';
 String trialLabel(Map<String, dynamic> data) => trialState(data) == 'expired' ? 'منتهي' : trialState(data) == 'ending' ? 'قريب الانتهاء' : 'فعال';
-Color trialColor(Map<String, dynamic> data) => trialState(data) == 'expired' ? _danger : trialState(data) == 'ending' ? const Color(0xFFB54708) : _success;
+Color trialColor(Map<String, dynamic> data) => trialState(data) == 'expired' ? _danger : trialState(data) == 'ending' ? _warning : _success;
 String subscriptionState(Map<String, dynamic> data) => daysLeft(data) <= 0 ? 'expired' : (isPerStudent(data) ? perStudentStats(data, intFrom(data['studentsCount'])).remaining > 0 : n(sub(data)['remainingAmount']) > 0) ? 'due' : 'active';
 String subscriptionLabel(Map<String, dynamic> data) => subscriptionState(data) == 'expired' ? 'منتهي' : subscriptionState(data) == 'due' ? 'متأخر بالدفع' : 'نشط';
-Color subscriptionColor(Map<String, dynamic> data) => subscriptionState(data) == 'active' ? _success : _danger;
+Color subscriptionColor(Map<String, dynamic> data) => subscriptionState(data) == 'active' ? _success : subscriptionState(data) == 'due' ? _warning : _danger;
 
 void pick<T>(BuildContext context, String title, List<T> items, String Function(T) label, T? selected, ValueChanged<T> onSelect) {
   showModalBottomSheet<void>(
@@ -1049,7 +1234,7 @@ void pick<T>(BuildContext context, String title, List<T> items, String Function(
 
 void openPlanForm(BuildContext context, {DocumentSnapshot<Map<String, dynamic>>? doc}) => showModalBottomSheet<void>(context: context, isScrollControlled: true, showDragHandle: true, backgroundColor: Colors.white, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))), builder: (_) => _PlanForm(doc: doc));
 void openTrialDetails(BuildContext context, QueryDocumentSnapshot<Map<String, dynamic>> doc) => showModalBottomSheet<void>(context: context, isScrollControlled: true, showDragHandle: true, backgroundColor: Colors.white, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))), builder: (_) => _TrialDetailsSheet(doc));
-void openSubscriptionDetails(BuildContext context, QueryDocumentSnapshot<Map<String, dynamic>> doc) => showModalBottomSheet<void>(context: context, isScrollControlled: true, showDragHandle: true, backgroundColor: Colors.white, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))), builder: (_) => _SubscriptionDetailsSheet(doc));
+void openSubscriptionDetails(BuildContext context, QueryDocumentSnapshot<Map<String, dynamic>> doc, {bool focusPayment = false}) => showModalBottomSheet<void>(context: context, isScrollControlled: true, showDragHandle: true, backgroundColor: Colors.white, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))), builder: (_) => _SubscriptionDetailsSheet(doc, focusPayment: focusPayment));
 
 Future<int> getStudentsCount(String schoolId) async {
   final snap = await _db.collection('schools').doc(schoolId).collection('students').get();
