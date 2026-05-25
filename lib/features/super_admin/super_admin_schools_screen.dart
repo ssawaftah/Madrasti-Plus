@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/models/school.dart';
 import '../../core/services/super_admin_service.dart';
+import 'super_admin_school_details_screen.dart';
 
 class SuperAdminSchoolsScreen extends StatefulWidget {
   const SuperAdminSchoolsScreen({super.key});
@@ -49,9 +50,9 @@ class _SuperAdminSchoolsScreenState extends State<SuperAdminSchoolsScreen> {
     }).toList();
   }
 
-  void _showSoon() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('صفحة عرض المدرسة في المرحلة القادمة')),
+  void _openSchool(School school) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => SuperAdminSchoolDetailsScreen(schoolId: school.id)),
     );
   }
 
@@ -146,7 +147,7 @@ class _SuperAdminSchoolsScreenState extends State<SuperAdminSchoolsScreen> {
                   else if (filtered.isEmpty)
                     const _EmptyState(text: 'لا توجد مدارس مطابقة للبحث')
                   else
-                    ...filtered.map((school) => _SchoolCard(school: school, onView: _showSoon)),
+                    ...filtered.map((school) => _SchoolCard(school: school, onView: () => _openSchool(school))),
                 ],
               );
             },
@@ -301,10 +302,7 @@ class _SchoolCard extends StatelessWidget {
 
   bool _schoolIsActive(String status) {
     final normalized = status.toLowerCase().trim();
-    return normalized != 'inactive' &&
-        normalized != 'suspended' &&
-        normalized != 'stopped' &&
-        normalized != 'paused';
+    return normalized != 'inactive' && normalized != 'suspended' && normalized != 'stopped' && normalized != 'paused';
   }
 }
 
