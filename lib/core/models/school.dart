@@ -11,6 +11,7 @@ class School {
   final String managerName;
   final String email;
   final String adminUserId;
+  final String status;
   final DateTime createdAt;
 
   const School({
@@ -26,6 +27,7 @@ class School {
     required this.managerName,
     required this.email,
     required this.adminUserId,
+    this.status = 'active',
     required this.createdAt,
   });
 
@@ -43,6 +45,7 @@ class School {
       managerName: json['managerName'] as String? ?? '',
       email: json['email'] as String? ?? '',
       adminUserId: json['adminUserId'] as String? ?? '',
+      status: json['status'] as String? ?? 'active',
       createdAt: json['createdAt'] == null
           ? DateTime.now()
           : DateTime.parse(json['createdAt'] as String),
@@ -62,6 +65,7 @@ class School {
       'managerName': managerName,
       'email': email,
       'adminUserId': adminUserId,
+      'status': status,
       'createdAt': createdAt.toIso8601String(),
     };
   }
