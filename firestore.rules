@@ -22,6 +22,10 @@ service cloud.firestore {
       return hasUserDoc() ? userDoc().data.schoolId : null;
     }
 
+    function isSuperAdmin() {
+      return role() == 'super_admin';
+    }
+
     function isAdmin() {
       return role() == 'admin';
     }
@@ -53,16 +57,16 @@ service cloud.firestore {
     }
 
     function allowedUserRoles() {
-      return ['admin', 'teacher', 'parent', 'nfc_device'];
+      return ['super_admin', 'admin', 'teacher', 'parent', 'nfc_device'];
     }
 
     match /users/{userId} {
       allow read: if signedIn() && (
-        isAdmin() || request.auth.uid == userId
+        isSuperAdmin() || isAdmin() || request.auth.uid == userId
       );
 
       allow create: if signedIn() && (
-        isAdmin() || (
+        isSuperAdmin() || isAdmin() || (
           request.auth.uid == userId &&
           request.resource.data.role == 'parent' &&
           request.resource.data.schoolId is string &&
@@ -73,58 +77,62 @@ service cloud.firestore {
       );
 
       allow update: if signedIn() && (
-        isAdmin() || (
+        isSuperAdmin() || isAdmin() || (
           request.auth.uid == userId &&
           request.resource.data.diff(resource.data).changedKeys()
             .hasOnly(['fcmTokens', 'lastFcmTokenUpdatedAt'])
         )
       );
 
-      allow delete: if signedIn() && isAdmin() && request.auth.uid != userId;
+      allow delete: if signedIn() && (isSuperAdmin() || isAdmin()) && request.auth.uid != userId;
     }
 
     match /schools/{schoolId} {
-      allow read: if signedIn() && isSameSchool(schoolId);
-      allow create, update, delete: if signedIn() && isAdmin() && isSameSchool(schoolId);
+      allow read: if signedIn() && (isSuperAdmin() || isSameSchool(schoolId));
+      allow create, update, delete: if signedIn() && (isSuperAdmin() || (isAdmin() && isSameSchool(schoolId)));
 
       match /students/{studentId} {
-        allow read: if signedIn() && isSameSchool(schoolId) && (
+        allow read: if signedIn() && (isSuperAdmin() || (isSameSchool(schoolId) && (
           isAdmin() ||
           isTeacher() ||
           isNfcDevice() ||
           parentLinkedToStudent(studentId)
-        );
+        )));
 
-        allow create, update, delete: if signedIn() && isAdmin() && isSameSchool(schoolId);
+        allow create, update, delete: if signedIn() && (isSuperAdmin() || (isAdmin() && isSameSchool(schoolId)));
       }
 
       match /attendance_records/{recordId} {
-        allow read: if signedIn() && isSameSchool(schoolId) && (
+        allow read: if signedIn() && (isSuperAdmin() || (isSameSchool(schoolId) && (
           isAdmin() ||
           isTeacher() ||
           isNfcDevice() ||
           parentLinkedToStudent(resource.data.studentId)
-        );
+        )));
 
-        allow create: if signedIn() && isSameSchool(schoolId) && (
+        allow create: if signedIn() && (isSuperAdmin() || (isSameSchool(schoolId) && (
           isAdmin() || isNfcDevice()
-        ) &&
+        ))) &&
           request.resource.data.studentId is string &&
           request.resource.data.studentName is string &&
           request.resource.data.type in ['check_in', 'check_out'] &&
           request.resource.data.timestamp is string;
 
-        allow update, delete: if signedIn() && isAdmin() && isSameSchool(schoolId);
+        allow update, delete: if signedIn() && (isSuperAdmin() || (isAdmin() && isSameSchool(schoolId)));
       }
+    }
+
+    match /billing_plans/{planId} {
+      allow read, create, update, delete: if signedIn() && isSuperAdmin();
     }
 
     match /notifications/{notificationId} {
       allow read: if signedIn() && (
-        isAdmin() || resource.data.userId == request.auth.uid
+        isSuperAdmin() || isAdmin() || resource.data.userId == request.auth.uid
       );
 
       allow create: if signedIn() && (
-        isAdmin() || isNfcDevice()
+        isSuperAdmin() || isAdmin() || isNfcDevice()
       ) &&
         request.resource.data.userId is string &&
         request.resource.data.studentId is string &&
@@ -136,13 +144,13 @@ service cloud.firestore {
         request.resource.data.isRead is bool;
 
       allow update: if signedIn() && (
-        isAdmin() || (
+        isSuperAdmin() || isAdmin() || (
           resource.data.userId == request.auth.uid &&
           request.resource.data.diff(resource.data).changedKeys().hasOnly(['isRead'])
         )
       );
 
-      allow delete: if signedIn() && isAdmin();
+      allow delete: if signedIn() && (isSuperAdmin() || isAdmin());
     }
 
     match /{document=**} {
