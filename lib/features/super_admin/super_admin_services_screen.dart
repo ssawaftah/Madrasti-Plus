@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'billing/super_admin_billing_screen.dart';
 import 'super_admin_school_wizard_screen.dart';
 import 'super_admin_schools_screen.dart';
 
@@ -15,6 +16,12 @@ class SuperAdminServicesScreen extends StatelessWidget {
   void _openSchools(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const SuperAdminSchoolsScreen()),
+    );
+  }
+
+  void _openBilling(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const SuperAdminBillingScreen()),
     );
   }
 
@@ -49,7 +56,7 @@ class SuperAdminServicesScreen extends StatelessWidget {
                   _ServiceCard(icon: Icons.school_outlined, title: 'إدارة المدارس', onTap: () => _openSchools(context)),
                   _ServiceCard(icon: Icons.add_business_outlined, title: 'إضافة مدرسة', onTap: () => _openAddSchool(context)),
                   _ServiceCard(icon: Icons.admin_panel_settings_outlined, title: 'إدارة المدراء', onTap: () => _showSoon(context, 'إدارة المدراء')),
-                  _ServiceCard(icon: Icons.workspace_premium_outlined, title: 'الاشتراكات والخطط', onTap: () => _showSoon(context, 'الاشتراكات والخطط')),
+                  _ServiceCard(icon: Icons.receipt_long_outlined, title: 'الاشتراكات والفوترة', onTap: () => _openBilling(context)),
                   _ServiceCard(icon: Icons.campaign_outlined, title: 'الإشعارات العامة', onTap: () => _showSoon(context, 'الإشعارات العامة')),
                   _ServiceCard(icon: Icons.settings_outlined, title: 'إعدادات المنصة', onTap: () => _showSoon(context, 'إعدادات المنصة')),
                 ],
