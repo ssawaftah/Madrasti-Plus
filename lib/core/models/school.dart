@@ -2,6 +2,7 @@ class School {
   final String id;
   final String code;
   final String name;
+  final String governorate;
   final String address;
   final String phone;
   final String type;
@@ -16,6 +17,7 @@ class School {
     required this.id,
     required this.code,
     required this.name,
+    this.governorate = '',
     required this.address,
     this.phone = '',
     this.type = '',
@@ -32,6 +34,7 @@ class School {
       id: json['id'] as String,
       code: json['code'] as String? ?? '',
       name: json['name'] as String? ?? '',
+      governorate: json['governorate'] as String? ?? '',
       address: json['address'] as String? ?? '',
       phone: json['phone'] as String? ?? '',
       type: json['type'] as String? ?? '',
@@ -50,6 +53,7 @@ class School {
     return {
       'code': code,
       'name': name,
+      'governorate': governorate,
       'address': address,
       'phone': phone,
       'type': type,
